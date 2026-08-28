@@ -69,7 +69,7 @@ jobs:
         cp build.config padavan-ng/trunk/.config
     
         # Модифицируем конфиг ядра, меняя размер RAM с 64M на 128M
-        sed -i 's/mem=64M/mem=128M/g' padavan-ng/trunk/configs/boards/nexx/wt3020/kernel-3.4.x.config
+        sed -i 's/mem=64M/mem=128M/g' padavan-ng/trunk/configs/boards/NEXX/WT3020H/kernel-3.4.x.config
     
         cd padavan-ng/trunk
         ./clear_tree.sh
