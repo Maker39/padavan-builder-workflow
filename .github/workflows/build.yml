@@ -52,7 +52,7 @@ jobs:
     
         # 2. ПРИНУДИТЕЛЬНО записываем правильные переменные путей в конец .config
         echo "FIRMWARE_VENDOR=NEXX" >> padavan-ng/trunk/.config
-        echo "FIRMWARE_PRODUCT_ID=WT3020" >> padavan-ng/trunk/.config
+        echo "FIRMWARE_PRODUCT_ID=WT3020H" >> padavan-ng/trunk/.config
         
         # 3. Переходим в директорию и собираем
         cd padavan-ng/trunk
