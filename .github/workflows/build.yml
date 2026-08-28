@@ -45,25 +45,41 @@ jobs:
     - name: Run custom pre-build script
       run: '[[ -f pre-build.sh ]] && . pre-build.sh || :'
 
-    - name: Build firmware
-      run: |
-        # 1. Сначала копируем базовый шаблон конфигурации, если он есть
-        cp build.config padavan-ng/trunk/.config
+#    - name: Build firmware
+#      run: |
+#        # 1. Сначала копируем базовый шаблон конфигурации, если он есть
+#        cp build.config padavan-ng/trunk/.config
+#    
+#        # 2. ПРИНУДИТЕЛЬНО записываем правильные переменные путей в конец .config
+#        echo "FIRMWARE_VENDOR=NEXX" >> padavan-ng/trunk/.config
+#        echo "FIRMWARE_PRODUCT_ID=WT3020H" >> padavan-ng/trunk/.config
+#        
+#        # 3. Переходим в директорию и собираем
+#        cd padavan-ng/trunk
+#        ./clear_tree.sh
+#        ./build_firmware.sh
+#    
+#        # 4. Поиск готового файла
+#        FW_FILE_NAME="$(find images -type f -regextype posix-extended -iregex ".*\.(trx|bin)$" -printf "%T@\t%f\n" | sort -V | tail -1 | cut -f2)"
+#        [[ -n $FW_FILE_NAME ]] || { echo "Firmware file not found"; exit 1; }
+#        echo "FW_FILE_NAME=$FW_FILE_NAME" >> $GITHUB_ENV
+#    
+
+     - name: Build firmware
+       run: |
+         cp build.config padavan-ng/trunk/.config
     
-        # 2. ПРИНУДИТЕЛЬНО записываем правильные переменные путей в конец .config
-        echo "FIRMWARE_VENDOR=NEXX" >> padavan-ng/trunk/.config
-        echo "FIRMWARE_PRODUCT_ID=WT3020H" >> padavan-ng/trunk/.config
-        
-        # 3. Переходим в директорию и собираем
-        cd padavan-ng/trunk
-        ./clear_tree.sh
-        ./build_firmware.sh
+         # Модифицируем конфиг ядра, меняя размер RAM с 64M на 128M
+         sed -i 's/mem=64M/mem=128M/g' padavan-ng/trunk/configs/boards/nexx/wt3020/kernel-3.4.x.config
     
-        # 4. Поиск готового файла
-        FW_FILE_NAME="$(find images -type f -regextype posix-extended -iregex ".*\.(trx|bin)$" -printf "%T@\t%f\n" | sort -V | tail -1 | cut -f2)"
-        [[ -n $FW_FILE_NAME ]] || { echo "Firmware file not found"; exit 1; }
-        echo "FW_FILE_NAME=$FW_FILE_NAME" >> $GITHUB_ENV
+         cd padavan-ng/trunk
+         ./clear_tree.sh
+         ./build_firmware.sh
     
+         FW_FILE_NAME="$(find images -type f -regextype posix-extended -iregex ".*\.(trx|bin)$" -printf "%T@\t%f\n" | sort -V | tail -1 | cut -f2)"
+         [[ -n $FW_FILE_NAME ]] || { echo "Firmware file not found"; exit 1; }
+         echo "FW_FILE_NAME=$FW_FILE_NAME" >> $GITHUB_ENV
+
 
     - name: Run custom post-build script
       run: '[[ -f post-build.sh ]] && . post-build.sh || :'
