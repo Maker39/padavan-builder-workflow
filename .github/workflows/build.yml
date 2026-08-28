@@ -66,15 +66,17 @@ jobs:
 #    
     - name: Build firmware
       run: |
-        # 1. Копируем базовый конфиг
+        # 1. Копируем ваш базовый конфиг платы
         cp build.config padavan-ng/trunk/.config
     
-        # 2. ЖЕСТКО форсируем 128M во всех шаблонах плат ядра перед компиляцией
-        find padavan-ng/trunk/configs/boards/ -name "*.config" -exec sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n/g' {} +
-        find padavan-ng/trunk/configs/boards/ -name "*.config" -exec sed -i 's/CONFIG_RT2880_DRAM_128M=n/CONFIG_RT2880_DRAM_128M=y/g' {} +
-        find padavan-ng/trunk/configs/boards/ -name "*.config" -exec sed -i 's/mem=64M/mem=128M/g' {} +
+        # 2. ЖЕСТКО форсируем 128M во ВСЕХ файлах конфигурации ядер (включая общие шаблоны MediaTek)
+        find padavan-ng/trunk/configs/ -type f -name "*.config" -exec sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n/g' {} +
+        find padavan-ng/trunk/configs/ -type f -name "*.config" -exec sed -i 's/CONFIG_RT2880_DRAM_128M=n/CONFIG_RT2880_DRAM_128M=y/g' {} +
     
-        # 3. Переходим в директорию, очищаем дерево и собираем
+        # 3. Перезаписываем строку аргументов запуска ядра (cmdline), меняя mem=64M на mem=128M во всем репозитории
+        find padavan-ng/trunk/configs/ -type f -exec sed -i 's/mem=64M/mem=128M/g' {} +
+    
+        # 4. Переходим в директорию, очищаем дерево сборки и запускаем компиляцию
         cd padavan-ng/trunk
         ./clear_tree.sh
         ./build_firmware.sh
