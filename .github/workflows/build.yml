@@ -66,11 +66,15 @@ jobs:
 #    
     - name: Build firmware
       run: |
+        # 1. Копируем базовый конфиг
         cp build.config padavan-ng/trunk/.config
     
-        # Модифицируем конфиг ядра, меняя размер RAM с 64M на 128M
-        sed -i 's/mem=64M/mem=128M/g' padavan-ng/trunk/configs/boards/NEXX/WT3020H16M/kernel-3.4.x.config
+        # 2. ЖЕСТКО форсируем 128M во всех шаблонах плат ядра перед компиляцией
+        find padavan-ng/trunk/configs/boards/ -name "*.config" -exec sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n/g' {} +
+        find padavan-ng/trunk/configs/boards/ -name "*.config" -exec sed -i 's/CONFIG_RT2880_DRAM_128M=n/CONFIG_RT2880_DRAM_128M=y/g' {} +
+        find padavan-ng/trunk/configs/boards/ -name "*.config" -exec sed -i 's/mem=64M/mem=128M/g' {} +
     
+        # 3. Переходим в директорию, очищаем дерево и собираем
         cd padavan-ng/trunk
         ./clear_tree.sh
         ./build_firmware.sh
