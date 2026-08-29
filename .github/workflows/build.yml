@@ -66,41 +66,49 @@ jobs:
 #    
     - name: Build firmware
       run: |
-        # 1. Копируем ваш базовый рабочий конфиг (шаблон wt3020h16m)
+        # 1. Копируем ваш базовый рабочий конфиг (шаблон)
         cp build.config padavan-ng/trunk/.config
     
         # 2. Переходим в рабочую папку проекта
         cd padavan-ng/trunk
     
-        # 3. КРИТИЧЕСКИЙ ШАГ: Создаем файл жестких настроек ядра (force_128m.config)
-        # Эти параметры намертво перекроют любые дефолтные конфиги во время компиляции
-        cat << 'EOF' > force_128m.config
-        CONFIG_RT2880_DRAM_64M=n
-        CONFIG_RT2880_DRAM_128M=y
-        CONFIG_RALINK_RAM_SIZE=128
+        # 3. КРИТИЧЕСКИЙ ШАГ: Внедряем патч С-кода платформы Ralink внутрь скрипта сборки
+        # Как только ядро извлечется, скрипт перепишет аппаратные дефайны памяти с 64МБ на 128МБ
+        cat << 'EOF' > patch_ram.sh
+        #!/bin/bash
+        if [ -d "linux/linux-3.4.x" ]; then
+          echo "=== ПАТЧИМ ИСХОДНЫЙ КОД ЯДРА ПОД 128MB RAM ==="
+          # 1. Форсируем размер в заголовочных файлах платформы MediaTek/Ralink
+          find linux/linux-3.4.x/arch/mips/include/asm/mach-ralink/ -type f -name "*.h" -exec sed -i 's/CONFIG_RALINK_RAM_SIZE=64/CONFIG_RALINK_RAM_SIZE=128/g' {} +
+          find linux/linux-3.4.x/arch/mips/ralink/ -type f -name "*.c" -exec sed -i 's/sys_mem_size = 64/sys_mem_size = 128/g' {} +
+      
+          # 2. Обходим аппаратное ограничение детекции шины для MT7620N (Force 128M)
+          find linux/linux-3.4.x/arch/mips/ralink/ -type f -name "*.c" -exec sed -i 's/#define CONFIG_RALINK_RAM_SIZE.*/#define CONFIG_RALINK_RAM_SIZE 128/g' {} +
+      
+          # 3. Перезаписываем финальный рабочий конфиг ядра, генерируемый Padavan
+          if [ -f "linux/linux-3.4.x/.config" ]; then
+            sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n/g' linux/linux-3.4.x/.config
+            sed -i 's/CONFIG_RT2880_DRAM_128M=n/CONFIG_RT2880_DRAM_128M=y/g' linux/linux-3.4.x/.config
+            sed -i 's/CONFIG_RALINK_RAM_SIZE=64/CONFIG_RALINK_RAM_SIZE=128/g' linux/linux-3.4.x/.config
+          fi
+        fi
         EOF
-    
-        # 4. Внедряем KCONFIG_ALLCONFIG в скрипт сборки ядра
-        # Мы модифицируем вызов make в build_firmware.sh, чтобы ядро собиралось с нашим оверлеем
-        sed -i 's/make -C $(LINUX_DIR) oldconfig/make -C $(LINUX_DIR) KCONFIG_ALLCONFIG=..\/..\/force_128m.config alldefconfig/g' build_firmware.sh
-        sed -i 's/make -j$HOST_NCPU/make KCONFIG_ALLCONFIG=..\/..\/force_128m.config -j$HOST_NCPU/g' build_firmware.sh
-    
-        # Дополнительно подстрахуемся и заменим все текстовые упоминания 64МБ в папке плат
-        find configs/boards/ -name "kernel-3.4.x.config" -exec sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n/g' {} +
-        find configs/boards/ -name "kernel-3.4.x.config" -exec sed -i 's/CONFIG_RT2880_DRAM_128M=n/CONFIG_RT2880_DRAM_128M=y/g' {} +
-        find configs/boards/ -name "kernel-3.4.x.config" -exec sed -i 's/CONFIG_RALINK_RAM_SIZE=64/CONFIG_RALINK_RAM_SIZE=128/g' {} +
+        chmod +x patch_ram.sh
 
-        # 5. Очищаем дерево сборки и запускаем компиляцию
+        # Инжектируем вызов нашего патча в build_firmware.sh ПЕРЕД началом компиляции (build_kernel)
+        sed -i '/build_kernel()/a \    ./patch_ram.sh' build_firmware.sh
+        # Также вызываем его сразу после генерации oldconfig
+        sed -i '/make -C $(LINUX_DIR) oldconfig/a \	./patch_ram.sh' build_firmware.sh
+
+        # 4. Очищаем дерево сборки и запускаем компиляцию
         ./clear_tree.sh
         ./build_firmware.sh
     
-        # 6. Поиск готового файла
+        # 5. Поиск готового файла
         cd ../..
         FW_FILE_NAME="$(find padavan-ng/trunk/images -type f -regextype posix-extended -iregex ".*\.(trx|bin)$" -printf "%T@\t%f\n" | sort -V | tail -1 | cut -f2)"
         [[ -n $FW_FILE_NAME ]] || { echo "Firmware file not found"; exit 1; }
         echo "FW_FILE_NAME=$FW_FILE_NAME" >> $GITHUB_ENV
-
-
 
     - name: Run custom post-build script
       run: '[[ -f post-build.sh ]] && . post-build.sh || :'
