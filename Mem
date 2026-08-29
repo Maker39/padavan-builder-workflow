@@ -1,1 +1,68 @@
-Чтобы автоматизировать создание GitHub Releases и автоматически загружать туда готовый файл прошивки (.bin или .trx) после каждой успешной сборки, вам нужно добавить несколько шагов в ваш существующий YAML-файл воркфлоу (сразу после шага компиляции).
+Чтобы автоматизировать создание GitHub Releases и автоматически загружать туда готовый файл прошивки (.bin или .trx) после каждой успешной сборки,
+вам нужно добавить несколько шагов в ваш существующий YAML-файл воркфлоу (сразу после шага компиляции).
+Для этого отлично подходит официальный и надежный экшен softprops/action-gh-release.
+Ниже представлена пошаговая инструкция и готовый код.
+
+  Шаг 1: Добавление прав на запись (Важно!)По умолчанию у GitHub Actions может не быть прав на создание релизов в вашем репозитории. 
+Чтобы это исправить, добавьте блок permissions в самое начало вашего файла воркфлоу (на уровне jobs или on):
+permissions:
+  contents: write  # Это разрешение жизненно важно для создания релизов
+  Шаг 2: Полностью готовый блок сборки и релизаЗамените ваш текущий финальный шаг (начиная со сборки прошивки) на следующий код. 
+Он не только скомпилирует прошивку с вашим хаком на 128 МБ, но и автоматически создаст релиз, прикрепив туда файл:
+
+    - name: Build firmware
+      run: |
+        sed -i 's/"//g' build.config
+        cp build.config padavan-ng/trunk/.config
+        cd padavan-ng/trunk
+        
+        # Ваш рабочий хак для 128MB RAM
+        cat << 'EOF' >> user/scripts/custom_script.sh
+        if [ -f "../../linux/linux-3.4.x/.config" ]; then
+          sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n/g' ../../linux/linux-3.4.x/.config
+          sed -i 's/CONFIG_RT2880_DRAM_128M=n/CONFIG_RT2880_DRAM_128M=y/g' ../../linux/linux-3.4.x/.config
+          sed -i 's/CONFIG_RALINK_RAM_SIZE=64/CONFIG_RALINK_RAM_SIZE=128/g' ../../linux/linux-3.4.x/.config
+        fi
+        if [ -f "configs/boards/NEXX/WT3020H16M/kernel-3.4.x.config" ]; then
+          sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n/g' configs/boards/NEXX/WT3020H16M/kernel-3.4.x.config
+          sed -i 's/CONFIG_RT2880_DRAM_128M=n/CONFIG_RT2880_DRAM_128M=y/g' configs/boards/NEXX/WT3020H16M/kernel-3.4.x.config
+          sed -i 's/CONFIG_RALINK_RAM_SIZE=64/CONFIG_RALINK_RAM_SIZE=128/g' configs/boards/NEXX/WT3020H16M/kernel-3.4.x.config
+        fi
+        find ../../linux/linux-3.4.x/arch/mips/ralink/ -type f -exec sed -i 's/mem=64M/mem=128M/g' {} +
+EOF
+
+        ./clear_tree.sh
+        ./build_firmware.sh
+        
+        # Генерируем уникальный тег на основе текущей даты и времени
+        RELEASE_TAG="WT3020H16M-128MB-$(date +'%Y.%m.%d-%H%M')"
+        echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
+        
+        # Находим путь к файлу прошивки и копируем его в корень для удобства экшена релиза
+        FW_PATH="$(find images -type f -regextype posix-extended -iregex ".*\.(trx|bin)$" -printf "%p" | sort -V | tail -1)"
+        if [[ -n $FW_PATH ]]; then
+          cp "$FW_PATH" ../../
+          echo "FW_FILE=../../$(basename "$FW_PATH")" >> $GITHUB_ENV
+        else
+          echo "Firmware file not found"; exit 1;
+        fi
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ env.RELEASE_TAG }}
+        name: Padavan-NG Nexx WT3020H16M (128MB RAM Mod)
+        body: |
+          Автоматическая сборка прошивки Padavan-NG под роутер Nexx WT3020 с аппаратным модом на 128 МБ RAM.
+          
+          **Особенности этой сборки:**
+          - Активирована поддержка 128MB RAM (модификация ядра Linux 3.4)
+          - Файловые системы: EXT4, FAT, NTFS
+          - Сетевые службы: Samba, FTP, HTTPS
+          - Встроенные модули (из вашего конфига): WireGuard, ZRAM, WPAD
+        draft: false
+        prerelease: false
+        files: |
+          ${{ env.FW_FILE }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
