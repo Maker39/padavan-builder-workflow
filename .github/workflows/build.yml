@@ -66,23 +66,26 @@ jobs:
 #    
     - name: Build firmware
       run: |
-        # 1. Копируем ваш базовый рабочий конфиг шаблона
+        # 1. Копируем ваш базовый конфиг платы (шаблон)
         cp build.config padavan-ng/trunk/.config
     
-        # 2. ЖЕСТКО переписываем дефолтный файл конфигурации платы, который считывает компилятор
-        # Это отключит подтягивание дефолтных 64МБ во время работы ./build_firmware.sh
-        sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n/g' padavan-ng/trunk/configs/boards/NEXX/WT3020/firmware.config || true
-        sed -i 's/CONFIG_RT2880_DRAM_128M=n/CONFIG_RT2880_DRAM_128M=y/g' padavan-ng/trunk/configs/boards/NEXX/WT3020/firmware.config || true
+        # 2. ЖЕСТКО правим файл конфигурации ядра конкретно для WT3020
+        # Отключаем 64M, включаем 128M и меняем размер пула RAM на 128
+        SED_TARGET="padavan-ng/trunk/configs/boards/NEXX/WT3020/kernel-3.4.x.config"
     
-        # Дублируем для нижнего регистра (на случай разницы в структуре папок репозитория)
-        sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n/g' padavan-ng/trunk/configs/boards/nexx/wt3020/firmware.config || true
-        sed -i 's/CONFIG_RT2880_DRAM_128M=n/CONFIG_RT2880_DRAM_128M=y/g' padavan-ng/trunk/configs/boards/nexx/wt3020/firmware.config || true
+        sed -i 's/CONFIG_RT2880_DRAM_64M=y/# CONFIG_RT2880_DRAM_64M is not set/g' $SED_TARGET
+        sed -i 's/CONFIG_RT2880_DRAM_128M=n/CONFIG_RT2880_DRAM_128M=y/g' $SED_TARGET
+        sed -i 's/CONFIG_RALINK_RAM_SIZE=64/CONFIG_RALINK_RAM_SIZE=128/g' $SED_TARGET
     
-        # 3. ДОБАВЛЯЕМ КРИТИЧЕСКИЙ ПАРАМЕТР: Инжектируем принудительный аргумент ядра прямо в скрипт сборки.
-        # Мы заменим внутренний вызов генерации bootargs, намертво добавив mem=128M
-        sed -i 's/bootargs=\\"/bootargs=\\"mem=128M /g' padavan-ng/trunk/build_firmware.sh
+        # Дублируем для нижнего регистра папок (на случай если в Git они строчные)
+        SED_TARGET_LOW="padavan-ng/trunk/configs/boards/nexx/wt3020/kernel-3.4.x.config"
+        if [ -f "$SED_TARGET_LOW" ]; then
+        sed -i 's/CONFIG_RT2880_DRAM_64M=y/# CONFIG_RT2880_DRAM_64M is not set/g' $SED_TARGET_LOW
+        sed -i 's/CONFIG_RT2880_DRAM_128M=n/CONFIG_RT2880_DRAM_128M=y/g' $SED_TARGET_LOW
+        sed -i 's/CONFIG_RALINK_RAM_SIZE=64/CONFIG_RALINK_RAM_SIZE=128/g' $SED_TARGET_LOW
+        fi
 
-        # 4. Переходим в директорию, очищаем дерево и запускаем компиляцию
+        # 3. Переходим в директорию, очищаем дерево и запускаем компиляцию
         cd padavan-ng/trunk
         ./clear_tree.sh
         ./build_firmware.sh
@@ -90,6 +93,7 @@ jobs:
         FW_FILE_NAME="$(find images -type f -regextype posix-extended -iregex ".*\.(trx|bin)$" -printf "%T@\t%f\n" | sort -V | tail -1 | cut -f2)"
         [[ -n $FW_FILE_NAME ]] || { echo "Firmware file not found"; exit 1; }
         echo "FW_FILE_NAME=$FW_FILE_NAME" >> $GITHUB_ENV
+
 
 
     - name: Run custom post-build script
