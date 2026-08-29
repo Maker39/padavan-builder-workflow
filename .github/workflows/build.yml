@@ -66,18 +66,21 @@ jobs:
 #    
     - name: Build firmware
       run: |
-        # 1. Копируем базовый конфиг платы
+        # 1. Копируем ваш базовый рабочий конфиг шаблона
         cp build.config padavan-ng/trunk/.config
     
-        # 2. ЖЕСТКО форсируем переменные памяти в конфиге сборщика
-        sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n/g' padavan-ng/trunk/.config
-        sed -i 's/CONFIG_RT2880_DRAM_128M=n/CONFIG_RT2880_DRAM_128M=y/g' padavan-ng/trunk/.config
-        sed -i 's/CONFIG_FIRMWARE_BOOT_RAM_128M=n/CONFIG_FIRMWARE_BOOT_RAM_128M=y/g' padavan-ng/trunk/.config
+        # 2. ЖЕСТКО переписываем дефолтный файл конфигурации платы, который считывает компилятор
+        # Это отключит подтягивание дефолтных 64МБ во время работы ./build_firmware.sh
+        sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n/g' padavan-ng/trunk/configs/boards/NEXX/WT3020/firmware.config || true
+        sed -i 's/CONFIG_RT2880_DRAM_128M=n/CONFIG_RT2880_DRAM_128M=y/g' padavan-ng/trunk/configs/boards/NEXX/WT3020/firmware.config || true
     
-        # 3. КРИТИЧЕСКИЙ ШАГ: Перехватываем вызов "make" в скрипте сборки
-        # Мы принудительно подмешиваем флаги 128M прямо в каждую команду компиляции ядра Linux
-        sed -i 's/make -C $(LINUX_DIR)/make CONFIG_RT2880_DRAM_64M=n CONFIG_RT2880_DRAM_128M=y CONFIG_FIRMWARE_BOOT_RAM_128M=y -C $(LINUX_DIR)/g' padavan-ng/trunk/build_firmware.sh
-        sed -i 's/make -j$HOST_NCPU/make CONFIG_RT2880_DRAM_64M=n CONFIG_RT2880_DRAM_128M=y CONFIG_FIRMWARE_BOOT_RAM_128M=y -j$HOST_NCPU/g' padavan-ng/trunk/build_firmware.sh
+        # Дублируем для нижнего регистра (на случай разницы в структуре папок репозитория)
+        sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n/g' padavan-ng/trunk/configs/boards/nexx/wt3020/firmware.config || true
+        sed -i 's/CONFIG_RT2880_DRAM_128M=n/CONFIG_RT2880_DRAM_128M=y/g' padavan-ng/trunk/configs/boards/nexx/wt3020/firmware.config || true
+    
+        # 3. ДОБАВЛЯЕМ КРИТИЧЕСКИЙ ПАРАМЕТР: Инжектируем принудительный аргумент ядра прямо в скрипт сборки.
+        # Мы заменим внутренний вызов генерации bootargs, намертво добавив mem=128M
+        sed -i 's/bootargs=\\"/bootargs=\\"mem=128M /g' padavan-ng/trunk/build_firmware.sh
 
         # 4. Переходим в директорию, очищаем дерево и запускаем компиляцию
         cd padavan-ng/trunk
