@@ -66,33 +66,28 @@ jobs:
 #    
     - name: Build firmware
       run: |
-        # 1. Копируем ваш базовый конфиг платы (шаблон)
+        # 1. Копируем ваш базовый конфиг платы
         cp build.config padavan-ng/trunk/.config
     
-        # 2. ЖЕСТКО правим файл конфигурации ядра конкретно для WT3020
-        # Отключаем 64M, включаем 128M и меняем размер пула RAM на 128
-        SED_TARGET="padavan-ng/trunk/configs/boards/NEXX/WT3020H/kernel-3.4.x.config"
-    
-        sed -i 's/CONFIG_RT2880_DRAM_64M=y/# CONFIG_RT2880_DRAM_64M is not set/g' $SED_TARGET
-        sed -i 's/CONFIG_RT2880_DRAM_128M=n/CONFIG_RT2880_DRAM_128M=y/g' $SED_TARGET
-        sed -i 's/CONFIG_RALINK_RAM_SIZE=64/CONFIG_RALINK_RAM_SIZE=128/g' $SED_TARGET
-    
-        # Дублируем для нижнего регистра папок (на случай если в Git они строчные)
-        SED_TARGET_LOW="padavan-ng/trunk/configs/boards/nexx/wt3020/kernel-3.4.x.config"
-        if [ -f "$SED_TARGET_LOW" ]; then
-        sed -i 's/CONFIG_RT2880_DRAM_64M=y/# CONFIG_RT2880_DRAM_64M is not set/g' $SED_TARGET_LOW
-        sed -i 's/CONFIG_RT2880_DRAM_128M=n/CONFIG_RT2880_DRAM_128M=y/g' $SED_TARGET_LOW
-        sed -i 's/CONFIG_RALINK_RAM_SIZE=64/CONFIG_RALINK_RAM_SIZE=128/g' $SED_TARGET_LOW
-        fi
-
-        # 3. Переходим в директорию, очищаем дерево и запускаем компиляцию
+        # 2. Переходим в рабочую папку проекта
         cd padavan-ng/trunk
+    
+        # 3. КРИТИЧЕСКИЙ ХАК: Инжектируем принудительную замену RAM прямо в главный скрипт сборки
+        # Мы внедрим команды sed внутрь build_firmware.sh ПЕРЕД самым запуском компиляции ядра (build_kernel)
+        sed -i '/build_kernel()/a \    # Форсируем 128M во время сборки\n    find configs/boards/ -name "kernel-3.4.x.config" -exec sed -i "s/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n/g" {} +\n    find configs/boards/ -name "kernel-3.4.x.config" -exec sed -i "s/CONFIG_RT2880_DRAM_128M=n/CONFIG_RT2880_DRAM_128M=y/g" {} +\n    find configs/boards/ -name "kernel-3.4.x.config" -exec sed -i "s/CONFIG_RALINK_RAM_SIZE=64/CONFIG_RALINK_RAM_SIZE=128/g" {} +' build_firmware.sh
+
+        # Дополнительно подстрахуемся и внедрим подмену в Makefile самого ядра (когда оно распакуется)
+        sed -i '/make -C $(LINUX_DIR) oldconfig/a \	sed -i "s/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n/g" $(LINUX_DIR)/.config\n	sed -i "s/CONFIG_RT2880_DRAM_128M=n/CONFIG_RT2880_DRAM_128M=y/g" $(LINUX_DIR)/.config\n	sed -i "s/CONFIG_RALINK_RAM_SIZE=64/CONFIG_RALINK_RAM_SIZE=128/g" $(LINUX_DIR)/.config' build_firmware.sh
+
+        # 4. Очищаем дерево сборки и запускаем компиляцию
         ./clear_tree.sh
         ./build_firmware.sh
     
+        # 5. Поиск готового файла
         FW_FILE_NAME="$(find images -type f -regextype posix-extended -iregex ".*\.(trx|bin)$" -printf "%T@\t%f\n" | sort -V | tail -1 | cut -f2)"
         [[ -n $FW_FILE_NAME ]] || { echo "Firmware file not found"; exit 1; }
         echo "FW_FILE_NAME=$FW_FILE_NAME" >> $GITHUB_ENV
+
 
 
 
