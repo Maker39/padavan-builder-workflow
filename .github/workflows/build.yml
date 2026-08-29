@@ -71,7 +71,7 @@ jobs:
     
         # 2. ЖЕСТКО правим файл конфигурации ядра конкретно для WT3020
         # Отключаем 64M, включаем 128M и меняем размер пула RAM на 128
-        SED_TARGET="padavan-ng/trunk/configs/boards/NEXX/WT3020/kernel-3.4.x.config"
+        SED_TARGET="padavan-ng/trunk/configs/boards/NEXX/WT3020H/kernel-3.4.x.config"
     
         sed -i 's/CONFIG_RT2880_DRAM_64M=y/# CONFIG_RT2880_DRAM_64M is not set/g' $SED_TARGET
         sed -i 's/CONFIG_RT2880_DRAM_128M=n/CONFIG_RT2880_DRAM_128M=y/g' $SED_TARGET
