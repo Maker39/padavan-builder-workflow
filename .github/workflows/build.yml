@@ -69,14 +69,15 @@ jobs:
         # 1. Копируем базовый конфиг платы
         cp build.config padavan-ng/trunk/.config
     
-        # 2. Форсируем 128M в конфигурациях сборщика
-        find padavan-ng/trunk/configs/ -type f -name "*.config" -exec sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n/g' {} +
-        find padavan-ng/trunk/configs/ -type f -name "*.config" -exec sed -i 's/CONFIG_RT2880_DRAM_128M=n/CONFIG_RT2880_DRAM_128M=y/g' {} +
-        find padavan-ng/trunk/configs/ -type f -exec sed -i 's/mem=64M/mem=128M/g' {} +
+        # 2. ЖЕСТКО форсируем переменные памяти в конфиге сборщика
+        sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n/g' padavan-ng/trunk/.config
+        sed -i 's/CONFIG_RT2880_DRAM_128M=n/CONFIG_RT2880_DRAM_128M=y/g' padavan-ng/trunk/.config
+        sed -i 's/CONFIG_FIRMWARE_BOOT_RAM_128M=n/CONFIG_FIRMWARE_BOOT_RAM_128M=y/g' padavan-ng/trunk/.config
     
-        # 3. Внедряем динамический патч DTS-файлов в сам процесс сборки
-        # Скрипт заменит память в DTS сразу после того, как исходники ядра распакуются
-        sed -i '/make .* oldconfig/i \    find linux/linux-3.4.x/arch/mips/ralink/dts/ -type f -name "*.dts*" -exec sed -i "s/reg = <0x0 0x4000000>;/reg = <0x0 0x8000000>;/g" {} +\n    find linux/linux-3.4.x/arch/mips/ralink/dts/ -type f -name "*.dts*" -exec sed -i "s/reg = <0x00000000 0x04000000>;/reg = <0x00000000 0x08000000>;/g" {} +' padavan-ng/trunk/build_firmware.sh
+        # 3. КРИТИЧЕСКИЙ ШАГ: Перехватываем вызов "make" в скрипте сборки
+        # Мы принудительно подмешиваем флаги 128M прямо в каждую команду компиляции ядра Linux
+        sed -i 's/make -C $(LINUX_DIR)/make CONFIG_RT2880_DRAM_64M=n CONFIG_RT2880_DRAM_128M=y CONFIG_FIRMWARE_BOOT_RAM_128M=y -C $(LINUX_DIR)/g' padavan-ng/trunk/build_firmware.sh
+        sed -i 's/make -j$HOST_NCPU/make CONFIG_RT2880_DRAM_64M=n CONFIG_RT2880_DRAM_128M=y CONFIG_FIRMWARE_BOOT_RAM_128M=y -j$HOST_NCPU/g' padavan-ng/trunk/build_firmware.sh
 
         # 4. Переходим в директорию, очищаем дерево и запускаем компиляцию
         cd padavan-ng/trunk
