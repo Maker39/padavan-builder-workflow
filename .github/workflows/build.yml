@@ -66,28 +66,52 @@ jobs:
 #    
     - name: Build firmware
       run: |
-        # 1. Копируем ваш базовый рабочий конфиг (шаблон wt3020h16m)
+        # 1. Копируем ваш базовый рабочий конфиг платы
         cp build.config padavan-ng/trunk/.config
-    
-        # 2. КРИТИЧЕСКИЙ ШАГ: Массовая замена во ВСЕХ файлах конфигураций плат и ядер
-        # Скрипт переберет каждый файл .config в репозитории и переключит RAM с 64 на 128
-        find padavan-ng/trunk/configs/ -type f -name "kernel-3.4.x.config" -exec sed -i 's/CONFIG_RT2880_DRAM_64M=y/# CONFIG_RT2880_DRAM_64M is not set/g' {} +
-        find padavan-ng/trunk/configs/ -type f -name "kernel-3.4.x.config" -exec sed -i 's/CONFIG_RT2880_DRAM_128M=n/CONFIG_RT2880_DRAM_128M=y/g' {} +
-        find padavan-ng/trunk/configs/ -type f -name "kernel-3.4.x.config" -exec sed -i 's/CONFIG_RALINK_RAM_SIZE=64/CONFIG_RALINK_RAM_SIZE=128/g' {} +
-    
-        # 3. Дополнительно форсируем 128M в dts-аргументах запуска и переменных bootargs ядра
-        find padavan-ng/trunk/configs/ -type f -exec sed -i 's/mem=64M/mem=128M/g' {} +
-
-        # 4. Переходим в директорию, очищаем дерево и запускаем компиляцию
+        
+        # 2. Переходим в рабочую папку проекта
         cd padavan-ng/trunk
+        
+        # 3. КРИТИЧЕСКИЙ ШАГ: Создаем официальный патч ядра для MT7620
+        # Этот патч принудительно перепишет базовую конфигурацию процессора на 128MB
+        mkdir -p user/kernel-3.4.x
+        cat << 'EOF' > user/kernel-3.4.x/099-force-128m-ram.patch
+        --- a/arch/mips/ralink/Kconfig
+        +++ b/arch/mips/ralink/Kconfig
+        @@ -165,7 +165,7 @@
+         
+         config RALINK_RAM_SIZE
+          int "RAM Size (MB)"
+        -	default 64
+        +	default 128
+          help
+            Please specify the RAM size in MB.
+         
+        --- a/configs/boards/NEXX/WT3020H/kernel-3.4.x.config
+        +++ b/configs/boards/NEXX/WT3020H/kernel-3.4.x.config
+        @@ -140,5 +140,5 @@
+        -CONFIG_RT2880_DRAM_64M=y
+        -# CONFIG_RT2880_DRAM_128M is not set
+        -CONFIG_RALINK_RAM_SIZE=64
+        +CONFIG_RT2880_DRAM_64M=n
+        +CONFIG_RT2880_DRAM_128M=y
+        +CONFIG_RALINK_RAM_SIZE=128
+         EOF
+    
+        # Дублируем патч в глобальную папку патчей ядра репозитория (для надежности)
+        mkdir -p linux/linux-3.4.x/patches
+        cp user/kernel-3.4.x/099-force-128m-ram.patch linux/linux-3.4.x/patches/ || true
+    
+        # 4. Очищаем дерево сборки и запускаем компиляцию
         ./clear_tree.sh
         ./build_firmware.sh
-    
+        
         # 5. Поиск готового файла
         cd ../..
         FW_FILE_NAME="$(find padavan-ng/trunk/images -type f -regextype posix-extended -iregex ".*\.(trx|bin)$" -printf "%T@\t%f\n" | sort -V | tail -1 | cut -f2)"
         [[ -n $FW_FILE_NAME ]] || { echo "Firmware file not found"; exit 1; }
         echo "FW_FILE_NAME=$FW_FILE_NAME" >> $GITHUB_ENV
+
 
 
     - name: Run custom post-build script
