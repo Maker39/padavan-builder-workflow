@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Название конфигурационного файла вашей платы в репозитории
-BOARD_NAME="WT3020"
+BOARD_NAME="WT3020H16M"
 BOARD_DIR="padavan-ng/trunk/configs/boards/NEXX/${BOARD_NAME}"
 
-echo "=== Скрипт pre_build.sh: Настройка WT3020 под Flash 32MB ==="
+echo "=== Скрипт pre_build.sh: Настройка WT3020H16M под Flash 32MB ==="
 
 # 1. Проверяем путь к конфигурации платы
 if [ ! -d "$BOARD_DIR" ]; then
@@ -35,7 +35,7 @@ if [ -d "$BOARD_DIR" ]; then
     
     echo "Конфигурационные файлы успешно изменены."
 else
-    echo "Ошибка: Не удалось найти директорию конфигурации платы WT3020!"
+    echo "Ошибка: Не удалось найти директорию конфигурации платы WT3020H16M!"
     exit 1
 fi
 
