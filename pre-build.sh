@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Название вашей целевой платы
+# Название целевой платы
 BOARD_NAME="WT3020H16M"
 BOARD_DIR="padavan-ng/trunk/configs/boards/NEXX/${BOARD_NAME}"
 
-echo "=== 1. Модификация пользовательской конфигурации ==="
+echo "=== 1. Перезапись пользовательского board.h ==="
 cat << 'EOF' > ${BOARD_DIR}/board.h
 /* Blueendless Kimax BS-U35-WF (WT3020H16M Mod) */
 #define BOARD_PID		"WT3020H16M"
@@ -36,33 +36,84 @@ cat << 'EOF' > ${BOARD_DIR}/board.h
 #define BOARD_USB_PORT_COUNT	1
 EOF
 
-echo "=== 2. Безопасный патч исходников ядра Linux ==="
+echo "=== 2. Корректировка дерева устройств DTS ядра ==="
 
-# Находим файлы ядра в структуре padavan-ng
+# Находим точный файл DTS для WT3020 в ядре Linux
 DTS_FILE=$(find padavan-ng/trunk/linux -name "WT3020*.dts" | head -n 1)
-KERNEL_BOARD_C=$(find padavan-ng/trunk/linux -name "board.c" | grep "ralink" | head -n 1)
 
-# Модифицируем DTS (Если ядро использует дерево устройств)
 if [ -f "$DTS_FILE" ]; then
-    echo "Патчим Device Tree: $DTS_FILE"
-    # Безопасная замена кнопки сброса с 1 на 13
-    sed -i 's/gpios = <\&gpio0 1 /gpios = <\&gpio0 13 /g' "$DTS_FILE"
-fi
-
-# Модифицируем board.c ядра
-if [ -f "$KERNEL_BOARD_C" ]; then
-    echo "Патчим инициализацию архитектуры: $KERNEL_BOARD_C"
+    echo "DTS файл найден: $DTS_FILE. Переписываем структуру пинов."
     
-    # Меняем маску GPIO 1 на 13 для кнопки сброса, не затрагивая многострочные структуры
-    sed -i 's/BOARD_GPIO_BTN_RESET, DIR_IN/13, DIR_IN/g' "$KERNEL_BOARD_C" 2>/dev/null
-    sed -i 's/BOARD_GPIO_BTN_RESET/13/g' "$KERNEL_BOARD_C" 2>/dev/null
+    cat << 'EOF' > "$DTS_FILE"
+/dts-v1/;
+
+/include/ "mt7620a.dtsi"
+
+/ {
+	compatible = "nexx,wt3020", "ralink,mt7620a-soc";
+	model = "Blueendless Kimax BS-U35-WF";
+
+	gpio-leds {
+		compatible = "gpio-leds";
+
+		wifi {
+			label = "wt3020:blue:wifi";
+			gpios = <&gpio0 7 1>;
+		};
+
+		power {
+			label = "wt3020:blue:power";
+			gpios = <&gpio0 14 1>;
+		};
+	};
+
+	gpio-keys-polled {
+		compatible = "gpio-keys-polled";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		poll-interval = <20>;
+
+		reset {
+			label = "reset";
+			gpios = <&gpio0 13 1>;
+			linux,code = <0x102>;
+		};
+	};
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&pinctrl {
+	state_default: pinctrl0 {
+		gpio {
+			ralink,group = "ephy", "wled";
+			ralink,function = "gpio";
+		};
+	};
+};
+
+&ethernet {
+	mtd-mac-address = <&factory 0x4>;
+	ralink,port-map = "llllw";
+};
+
+&wmac {
+	ralink,mtd-eeprom = <&factory 0>;
+};
+
+&ehci {
+	status = "okay";
+};
+
+&ohci {
+	status = "okay";
+};
+EOF
+    echo "DTS успешно заменен."
+else
+    echo "ОШИБКА: DTS файл не найден в структуре директорий!"
 fi
 
-echo "=== 3. Фикс глобального заголовка подсистемы сборки ==="
-GLOBAL_BOARDS_H="padavan-ng/trunk/user/shared/boards.h"
-if [ -f "$GLOBAL_BOARDS_H" ]; then
-    echo "Патчим $GLOBAL_BOARDS_H"
-    sed -i 's/BOARD_GPIO_BTN_RESET.*/BOARD_GPIO_BTN_RESET 13/g' "$GLOBAL_BOARDS_H"
-fi
-
-echo "=== Скрипт успешно отработал без синтаксических ошибок ==="
+echo "=== Скрипт подготовки выполнен без использования опасных sed ==="
