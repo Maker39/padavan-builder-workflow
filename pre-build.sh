@@ -4,8 +4,11 @@
 BOARD_NAME="WT3020H16M"
 BOARD_DIR="padavan-ng/trunk/configs/boards/NEXX/${BOARD_NAME}"
 
-echo "=== 1. Формирование чистого board.h без конфликтов компилятора ==="
-cat << 'EOF' > ${BOARD_DIR}/board.h
+echo "=== Создание директории платы (на случай, если исходники еще не скачаны) ==="
+mkdir -p "${BOARD_DIR}"
+
+echo "=== Формирование чистого board.h под Kimax BS-U35-WF ==="
+cat << 'EOF' > "${BOARD_DIR}/board.h"
 /* Blueendless Kimax BS-U35-WF (WT3020H16M Mod) */
 #define BOARD_PID		"WT3020H16M"
 #define BOARD_NAME		"WT3020H16M"
@@ -23,9 +26,6 @@ cat << 'EOF' > ${BOARD_DIR}/board.h
 #define BOARD_GPIO_LED_WIFI	7   /* Синий WiFi LED */
 #define BOARD_GPIO_LED_POWER	14  /* Зеленый LAN/Power LED */
 
-/* Обходим ошибку компиляции: вешаем HDD LED на безопасный макрос USB */
-#define BOARD_GPIO_LED_USB	15  /* Красный/Оранжевый HDD LED */
-
 /* Настройки инверсии (Active Low для Kimax) */
 #define BOARD_GPIO_LED_INVERTED
 #define BOARD_GPIO_BTN_INVERTED
@@ -40,4 +40,5 @@ cat << 'EOF' > ${BOARD_DIR}/board.h
 #define BOARD_USB_PORT_COUNT	1
 EOF
 
-echo "=== Скрипт pre-build.sh успешно завершен без опасного кода! ==="
+echo "=== Проверка: Файл board.h успешно создан ==="
+ls -la "${BOARD_DIR}"
