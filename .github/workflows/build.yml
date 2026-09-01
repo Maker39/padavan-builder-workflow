@@ -72,7 +72,7 @@ jobs:
 ########## GPIO
     - name: Modify board.h for Kimax
       run: |
-        BOARD_H_PATH="./trunk/configs/boards/NEXX/WT3020/board.h"
+        BOARD_H_PATH="./trunk/configs/boards/NEXX/WT3020H16M/board.h"
         
         echo "=== Модификация board.h под Kimax BS-U35-WF ==="
         
