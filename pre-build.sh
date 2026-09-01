@@ -1,11 +1,17 @@
 #!/bin/bash
 
-# Название вашей целевой платы
-BOARD_NAME="WT3020H16M"
-BOARD_DIR="padavan-ng/trunk/configs/boards/NEXX/${BOARD_NAME}"
+echo "=== Поиск конфигурационной директории WT3020H16M ==="
 
-echo "=== Создание директории платы (на случай, если исходники еще не скачаны) ==="
-mkdir -p "${BOARD_DIR}"
+# Автоматически находим точный путь к папке WT3020H16M в системе
+BOARD_DIR=$(find . -type d -name "WT3020H16M" | head -n 1)
+
+if [ -z "$BOARD_DIR" ]; then
+    echo "Директория платы не найдена, создаем структуру папок на опережение..."
+    BOARD_DIR="padavan-ng/trunk/configs/boards/NEXX/WT3020H16M"
+    mkdir -p "$BOARD_DIR"
+fi
+
+echo "Используем путь для записи конфигурации: $BOARD_DIR"
 
 echo "=== Формирование чистого board.h под Kimax BS-U35-WF ==="
 cat << 'EOF' > "${BOARD_DIR}/board.h"
@@ -40,5 +46,5 @@ cat << 'EOF' > "${BOARD_DIR}/board.h"
 #define BOARD_USB_PORT_COUNT	1
 EOF
 
-echo "=== Проверка: Файл board.h успешно создан ==="
-ls -la "${BOARD_DIR}"
+echo "=== Файл board.h успешно создан! ==="
+ls -la "$BOARD_DIR"
