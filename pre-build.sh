@@ -16,15 +16,15 @@ cat << 'EOF' > ${BOARD_DIR}/board.h
 #define BOARD_BOOT_TIME		25
 #define BOARD_FLASH_TIME	120
 
-/* Принудительное переопределение GPIO аппаратного уровня */
-#define BOARD_GPIO_BTN_RESET	13  /* Сброс на GPIO 13 */
+/* Назначение GPIO по схеме Kimax */
+#define BOARD_GPIO_BTN_RESET	13
 #undef  BOARD_GPIO_BTN_WPS
 
-#define BOARD_GPIO_LED_WIFI	7   /* Синий WiFi */
-#define BOARD_GPIO_LED_POWER	14  /* Зеленый LAN */
-#define BOARD_GPIO_LED_SATA	15  /* Красный/Оранжевый HDD */
+#define BOARD_GPIO_LED_WIFI	7
+#define BOARD_GPIO_LED_POWER	14
+#define BOARD_GPIO_LED_SATA	15
 
-/* Инверсия сигналов */
+/* Настройки инверсии */
 #define BOARD_GPIO_LED_INVERTED
 #define BOARD_GPIO_BTN_INVERTED
 
@@ -36,16 +36,18 @@ cat << 'EOF' > ${BOARD_DIR}/board.h
 #define BOARD_HAS_EPHY_WND	0
 #define BOARD_NUM_UPHY_LEDS	0
 #define BOARD_USB_PORT_COUNT	1
-
-/* СИСТЕМНЫЙ ХАК: Принудительное освобождение GPIO 14 и 15 из регистров MT7620А */
-/* Перенаправляем функции драйвера board_init на инициализацию регистров pinmux */
-#define BOARD_INIT_CUSTOM                                                 \
-    do {                                                                  \
-        /* Чтение и модификация регистра PMX_EPHY_LED_AN (offset 0x60) */ \
-        /* Переводим пины EPHY (14 и 15) в режим GPIO, отключая LED LAN */\
-        *((volatile uint32_t *)(0xb0000060)) &= ~(0x1F << 15);            \
-    } while (0)
-
 EOF
 
-echo "=== Скрипт подготовки успешно завершен! ==="
+echo "=== 2. Безопасный патч общей логики инициализации портов ==="
+BOARDS_C_FILE="padavan-ng/trunk/user/shared/boards.c"
+
+if [ -f "$BOARDS_C_FILE" ]; then
+    echo "Файл boards.c найден. Внедряем хак регистров для MT7620A..."
+    # Находим функцию board_init и вставляем в её начало прямую запись в регистр pinmux (перевод пинов 14 и 15 в GPIO)
+    # Используем синтаксис, понятный компилятору без сторонних библиотек
+    sed -i '/void board_init(void)/!b;n;a \    *(volatile unsigned int *)(0xb0000060) &= ~(0x1F << 15);' "$BOARDS_C_FILE"
+else
+    echo "Предупреждение: boards.c не найден по этому пути."
+fi
+
+echo "=== Скрипт pre-build.sh успешно завершен ==="
