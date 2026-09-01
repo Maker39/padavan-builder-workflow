@@ -108,7 +108,21 @@ jobs:
         # 4. ПОДХОД OPENWRT: Меняем логику инициализации памяти во всех файлах платы WT3020H16M
         # Переводим сборщик в режим автоопределения RAM из загрузчика (Breed)
         BOARD_DIR="configs/boards/NEXX/WT3020H16M"
+         echo "=== Модификация board.h под Kimax BS-U35-WF ==="
+         # 1. Меняем имя устройства в веб-интерфейсе
+         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME          "BS-U35-WF"/' $BOARD_H_PATH
+         sed -i 's/#define BOARD_DESC.*/#define BOARD_DESC          "Blueendless Kimax Wi-Fi HDD"/' $BOARD_H_PATH
         
+         # 2. Переназначаем кнопку Reset на GPIO 1
+         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET     1/' $BOARD_H_PATH
+        
+         # 3. Отключаем неразведенную кнопку WPS (если она была активна)
+         sed -i 's/#define BOARD_GPIO_BTN_WPS.*/#undef  BOARD_GPIO_BTN_WPS/' $BOARD_H_PATH
+        
+         # 4. Переводим системные светодиоды на GPIO 13 (единственный синий диод Kimax)
+         sed -i 's/#define BOARD_GPIO_LED_RUN.*/#define BOARD_GPIO_LED_RUN       13/' $BOARD_H_PATH
+         sed -i 's/#define BOARD_GPIO_LED_ALERT.*/#define BOARD_GPIO_LED_ALERT     13/' $BOARD_H_PATH
+         
         # Правим конфигурацию ядра (Включаем чтение из Bootloader и отключаем жесткий лимит)
         sed -i 's/CONFIG_RALINK_RAM_SIZE=64/# CONFIG_RALINK_RAM_SIZE is not set/g' $BOARD_DIR/kernel-3.4.x.config
         sed -i 's/CONFIG_RALINK_RAM_SIZE_FROM_BOOTLOADER=n/CONFIG_RALINK_RAM_SIZE_FROM_BOOTLOADER=y/g' $BOARD_DIR/kernel-3.4.x.config
