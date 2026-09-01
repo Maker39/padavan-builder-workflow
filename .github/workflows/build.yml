@@ -77,8 +77,8 @@ jobs:
     #     echo "=== Модификация board.h под Kimax BS-U35-WF ==="
         
     #     # 1. Меняем имя устройства в веб-интерфейсе
-    #     sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME          "BS-U35-WF"/' $BOARD_H_PATH
-    #     sed -i 's/#define BOARD_DESC.*/#define BOARD_DESC          "Blueendless Kimax Wi-Fi HDD"/' $BOARD_H_PATH
+    #     sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $BOARD_H_PATH
+    #     sed -i 's/#define BOARD_DESC.*/#define BOARD_DESC  "Blueendless Kimax Wi-Fi HDD"/' $BOARD_H_PATH
         
     #     # 2. Переназначаем кнопку Reset на GPIO 1
     #     sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET     1/' $BOARD_H_PATH
@@ -123,20 +123,20 @@ jobs:
         # Заставляем Kconfig ядра по умолчанию всегда выбирать размер памяти из загрузчика
         sed -i '/build_kernel()/a \    echo "=== АКТИВИРУЕМ АВТООПРЕДЕЛЕНИЕ RAM ==="\n    find linux/linux-3.4.x/arch/mips/ralink/ -name "Kconfig" -exec sed -i "s/config RALINK_RAM_SIZE_FROM_BOOTLOADER/config RALINK_RAM_SIZE_FROM_BOOTLOADER\\n\\tbool\\n\\tdefault y\\n\\tconfig DISABLED_BOOTLOADER/g" {} +' build_firmware.sh
 
-         echo "=== Модификация board.h под Kimax BS-U35-WF ==="
-         # 1. Меняем имя устройства в веб-интерфейсе
-         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME          "BS-U35-WF"/' $BOARD_H_PATH
-         sed -i 's/#define BOARD_DESC.*/#define BOARD_DESC          "Blueendless Kimax Wi-Fi HDD"/' $BOARD_H_PATH
+        echo "=== Модификация board.h под Kimax BS-U35-WF ==="
+        # 1. Меняем имя устройства в веб-интерфейсе
+        sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $BOARD_H_PATH
+        sed -i 's/#define BOARD_DESC.*/#define BOARD_DESC  "Blueendless Kimax Wi-Fi HDD"/' $BOARD_H_PATH
         
-         # 2. Переназначаем кнопку Reset на GPIO 1
-         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET     1/' $BOARD_H_PATH
+        # 2. Переназначаем кнопку Reset на GPIO 1
+        sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET 1/' $BOARD_H_PATH
         
-         # 3. Отключаем неразведенную кнопку WPS (если она была активна)
-         sed -i 's/#define BOARD_GPIO_BTN_WPS.*/#undef  BOARD_GPIO_BTN_WPS/' $BOARD_H_PATH
+        # 3. Отключаем неразведенную кнопку WPS (если она была активна)
+        sed -i 's/#define BOARD_GPIO_BTN_WPS.*/#undef  BOARD_GPIO_BTN_WPS/' $BOARD_H_PATH
         
-         # 4. Переводим системные светодиоды на GPIO 13 (единственный синий диод Kimax)
-         sed -i 's/#define BOARD_GPIO_LED_RUN.*/#define BOARD_GPIO_LED_RUN       13/' $BOARD_H_PATH
-         sed -i 's/#define BOARD_GPIO_LED_ALERT.*/#define BOARD_GPIO_LED_ALERT     13/' $BOARD_H_PATH
+        # 4. Переводим системные светодиоды на GPIO 13 (единственный синий диод Kimax)
+        sed -i 's/#define BOARD_GPIO_LED_RUN.*/#define BOARD_GPIO_LED_RUN 13/' $BOARD_H_PATH
+        sed -i 's/#define BOARD_GPIO_LED_ALERT.*/#define BOARD_GPIO_LED_ALERT 13/' $BOARD_H_PATH
     
         # 6. Очищаем дерево сборки и запускаем компиляцию
         ./clear_tree.sh
