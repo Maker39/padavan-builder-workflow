@@ -87,13 +87,13 @@ jobs:
         sed -i 's/#define BOARD_GPIO_LED_POWER.*/#define BOARD_GPIO_LED_POWER 14/' configs/boards/NEXX/WT3020H16M/board.h
         sed -i 's/#define BOARD_GPIO_LED_WIFI.*/#define BOARD_GPIO_LED_WIFI 7/' configs/boards/NEXX/WT3020H16M/board.h
         sed -i 's/#define BOARD_GPIO_LED_SATA.*/#define BOARD_GPIO_LED_SATA 15/' configs/boards/NEXX/WT3020H16M/board.h
-# #define BOARD_GPIO_LED_WIFI	7   /* Синий WiFi LED на GPIO 7 */
-# #define BOARD_GPIO_LED_POWER	14  /* Зеленый LAN LED на GPIO 14 (как системный) */
-# #define BOARD_GPIO_LED_SATA	15  /* Красный/Оранжевый HDD LED на GPIO 15 */
+  # #define BOARD_GPIO_LED_WIFI	7   /* Синий WiFi LED на GPIO 7 */
+  # #define BOARD_GPIO_LED_POWER	14  /* Зеленый LAN LED на GPIO 14 (как системный) */
+  # #define BOARD_GPIO_LED_SATA	15  /* Красный/Оранжевый HDD LED на GPIO 15 */
 
-# /* Инверсия (Active Low) */
-# #define BOARD_GPIO_LED_INVERTED
-# #define BOARD_GPIO_BTN_INVERTED
+  # /* Инверсия (Active Low) */
+  # #define BOARD_GPIO_LED_INVERTED
+  # #define BOARD_GPIO_BTN_INVERTED
  
         
         # 4. ПОДХОД OPENWRT: Меняем логику инициализации памяти во всех файлах платы WT3020H16M
