@@ -101,9 +101,9 @@ jobs:
         TARGET_H="configs/boards/NEXX/WT3020H16M/board.h"
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET 13/' $TARGET_H
-        sed -i 's/#define BOARD_GPIO_LED_POWER.*/#define BOARD_GPIO_LED_POWER 14/' $TARGET_H
-        sed -i 's/#define BOARD_GPIO_LED_WIFI.*/#define BOARD_GPIO_LED_WIFI 7/' $TARGET_H
-        sed -i 's/#define BOARD_GPIO_LED_SATA.*/#define BOARD_GPIO_LED_SATA 15/' $TARGET_H
+        sed -i 's/#define BOARD_GPIO_LED_WIFI.*/#define BOARD_GPIO_LED_WIFI 72/' $TARGET_H
+        sed -i 's/#define BOARD_GPIO_LED_POWER.*/#define BOARD_GPIO_LED_POWER 1/' $TARGET_H
+        grep -q "BOARD_GPIO_LED_SATA" \(TARGET_H \vert{}\vert{} sed -i '/BOARD_GPIO_LED_WIFI/a #define BOARD_GPIO_LED_SATA 15' \)
         # echo "=== Модификация board.h под Kimax BS-U35-WF ==="
         # sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' configs/boards/NEXX/WT3020H16M/board.h
         # sed -i 's/#define BOARD_DESC.*/#define BOARD_DESC "Blueendless Kimax Wi-Fi HDD"/' configs/boards/NEXX/WT3020H16M/board.h
