@@ -80,12 +80,12 @@ jobs:
         # 3. Переходим в рабочую директорию проекта
         cd padavan-ng/trunk
         echo "=== Модификация board.h под Kimax BS-U35-WF ==="
-        sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME          "BS-U35-WF"/' configs/boards/NEXX/WT3020H16M/board.h
-        sed -i 's/#define BOARD_DESC.*/#define BOARD_DESC          "Blueendless Kimax Wi-Fi HDD"/' configs/boards/NEXX/WT3020H16M/board.h
-        sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET     1/' configs/boards/NEXX/WT3020H16M/board.h
+        sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' configs/boards/NEXX/WT3020H16M/board.h
+        sed -i 's/#define BOARD_DESC.*/#define BOARD_DESC "Blueendless Kimax Wi-Fi HDD"/' configs/boards/NEXX/WT3020H16M/board.h
+        sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET 13/' configs/boards/NEXX/WT3020H16M/board.h
         sed -i 's/#define BOARD_GPIO_BTN_WPS.*/#undef  BOARD_GPIO_BTN_WPS/' configs/boards/NEXX/WT3020H16M/board.h
-        sed -i 's/#define BOARD_GPIO_LED_RUN.*/#define BOARD_GPIO_LED_RUN       13/' configs/boards/NEXX/WT3020H16M/board.h
-        sed -i 's/#define BOARD_GPIO_LED_ALERT.*/#define BOARD_GPIO_LED_ALERT     13/' configs/boards/NEXX/WT3020H16M/board.h
+        sed -i 's/#define BOARD_GPIO_LED_RUN.*/#define BOARD_GPIO_LED_RUN 14/' configs/boards/NEXX/WT3020H16M/board.h
+        sed -i 's/#define BOARD_GPIO_LED_ALERT.*/#define BOARD_GPIO_LED_ALERT 13/' configs/boards/NEXX/WT3020H16M/board.h
 
         
         # 4. ПОДХОД OPENWRT: Меняем логику инициализации памяти во всех файлах платы WT3020H16M
