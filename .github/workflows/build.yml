@@ -79,14 +79,6 @@ jobs:
         
         # 3. Переходим в рабочую директорию проекта
         cd padavan-ng/trunk
-        echo "=== Модификация board.h под Kimax BS-U35-WF ==="
-        sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' configs/boards/NEXX/WT3020H16M/board.h
-        sed -i 's/#define BOARD_DESC.*/#define BOARD_DESC "Blueendless Kimax Wi-Fi HDD"/' configs/boards/NEXX/WT3020H16M/board.h
-        sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET 13/' configs/boards/NEXX/WT3020H16M/board.h
-        sed -i 's/#define BOARD_GPIO_BTN_WPS.*/#undef  BOARD_GPIO_BTN_WPS/' configs/boards/NEXX/WT3020H16M/board.h
-        sed -i 's/#define BOARD_GPIO_LED_POWER.*/#define BOARD_GPIO_LED_POWER 14/' configs/boards/NEXX/WT3020H16M/board.h
-        sed -i 's/#define BOARD_GPIO_LED_WIFI.*/#define BOARD_GPIO_LED_WIFI 7/' configs/boards/NEXX/WT3020H16M/board.h
-        sed -i 's/#define BOARD_GPIO_LED_SATA.*/#define BOARD_GPIO_LED_SATA 15/' configs/boards/NEXX/WT3020H16M/board.h
         
         # 4. ПОДХОД OPENWRT: Меняем логику инициализации памяти во всех файлах платы WT3020H16M
         # Переводим сборщик в режим автоопределения RAM из загрузчика (Breed)
@@ -105,6 +97,15 @@ jobs:
         # 5. ХАК ДЛЯ СБОРОЧНОГО СКРИПТА:
         # Заставляем Kconfig ядра по умолчанию всегда выбирать размер памяти из загрузчика
         sed -i '/build_kernel()/a \    echo "=== АКТИВИРУЕМ АВТООПРЕДЕЛЕНИЕ RAM ==="\n    find linux/linux-3.4.x/arch/mips/ralink/ -name "Kconfig" -exec sed -i "s/config RALINK_RAM_SIZE_FROM_BOOTLOADER/config RALINK_RAM_SIZE_FROM_BOOTLOADER\\n\\tbool\\n\\tdefault y\\n\\tconfig DISABLED_BOOTLOADER/g" {} +' build_firmware.sh
+
+        echo "=== Модификация board.h под Kimax BS-U35-WF ==="
+        sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' configs/boards/NEXX/WT3020H16M/board.h
+        sed -i 's/#define BOARD_DESC.*/#define BOARD_DESC "Blueendless Kimax Wi-Fi HDD"/' configs/boards/NEXX/WT3020H16M/board.h
+        sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET 13/' configs/boards/NEXX/WT3020H16M/board.h
+        sed -i 's/#define BOARD_GPIO_BTN_WPS.*/#undef  BOARD_GPIO_BTN_WPS/' configs/boards/NEXX/WT3020H16M/board.h
+        sed -i 's/#define BOARD_GPIO_LED_POWER.*/#define BOARD_GPIO_LED_POWER 14/' configs/boards/NEXX/WT3020H16M/board.h
+        sed -i 's/#define BOARD_GPIO_LED_WIFI.*/#define BOARD_GPIO_LED_WIFI 7/' configs/boards/NEXX/WT3020H16M/board.h
+        sed -i 's/#define BOARD_GPIO_LED_SATA.*/#define BOARD_GPIO_LED_SATA 15/' configs/boards/NEXX/WT3020H16M/board.h
     
         # 6. Очищаем дерево сборки и запускаем компиляцию
         ./clear_tree.sh
