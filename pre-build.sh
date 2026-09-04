@@ -1,21 +1,28 @@
 #!/bin/bash
 
-echo "=== ЗАПУСК ТОТАЛЬНОГО GPIO ПАТЧА ==?"
+echo "=== ЗАПУСК УНИВЕРСАЛЬНОГО GPIO ПАТЧА ==="
 
-# Ищем основной файл инициализации логики платы
-BOARD_C=$(find . -name "board.c" | grep "user/shared/board.c" | head -n 1)
+# Ищем БЕЗ привязки к жесткому пути user/shared/
+BOARD_C=$(find . -name "board.c" | head -n 1)
 
 if [ -n "$BOARD_C" ] && [ -f "$BOARD_C" ]; then
-    echo "FIRMWARE PATCH: Нашли файл $BOARD_C, внедряем полный сброс GPIO"
+    echo "FIRMWARE PATCH: Нашли файл по пути: $BOARD_C"
     
-    # Делаем инъекцию кода в самое начало функции board_init
-    # Мы перебираем ВСЕ пины от 1 до 45. На всякий случай пишем и 0, и 1
-    # Если диод управляется напрямую или инверсно — один из циклов его гарантированно отключит.
-    sed -i '/void board_init(void)/,!b; { /{/a\    {\n        int p;\n        for(p=1; p<=45; p++) {\n            if(p == 9 || p == 11 || p == 12 || p == 13 || p == 14) continue; // Пропускаем системные пины (SPI/Flash)\n            gpio_set_value(p, 0);\n            gpio_set_value(p, 1);\n        }\n    }' "$BOARD_C"
+    # Внедряем код гашения GPIO в функцию board_init
+    # Исключаем пины SPI флешки (9-14), остальные переводим в безопасный режим
+    sed -i '/void board_init(void)/,!b; { /{/a\    {\n        int p;\n        for(p=1; p<=45; p++) {\n            if(p >= 9 && p <= 14) continue;\n            gpio_set_value(p, 0);\n            gpio_set_value(p, 1);\n        }\n    }' "$BOARD_C"
     
-    echo "FIRMWARE PATCH: Код тотального гашения успешно внедрен."
+    echo "FIRMWARE PATCH: Успешно внедрили Си-код."
 else
-    echo "FIRMWARE PATCH ERROR: Не смогли найти user/shared/board.c"
+    echo "FIRMWARE PATCH WARNING: board.c не найден. Пробуем альтернативный вариант с board.h..."
+    
+    # Если board.c спрятан глубоко, бьем по конфигурационным файлам плат
+    BOARD_H=$(find . -name "board.h" | grep "WT3020" | head -n 1)
+    if [ -n "$BOARD_H" ] && [ -f "$BOARD_H" ]; then
+        echo "FIRMWARE PATCH: Нашли board.h: $BOARD_H"
+        # Переопределяем все LED пины профиля в неактивное состояние (-1)
+        sed -i 's/#define BOARD_GPIO_LED_.*/#define \0\n#undef \0\n#define \0 -1/g' "$BOARD_H"
+    fi
 fi
 
-echo "=== ЗАВЕРШЕНИЕ ТОТАЛЬНОГО GPIO ПАТЧА ==="
+echo "=== ЗАВЕРШЕНИЕ УНИВЕРСАЛЬНОГО GPIO ПАТЧА ==="
