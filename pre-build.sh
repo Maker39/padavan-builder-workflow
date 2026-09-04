@@ -1,16 +1,8 @@
-# Пути к конфигурационным файлам ядра (актуально для большинства форков Padavan)
-KERNEL_DEFCONFIG="linux-3.4/arch/mips/configs/rt288x_defconfig"
-KERNEL_CONFIG="linux-3.4/.config"
+# Внедряем код гашения GPIO в главный файл инициализации борды (board.c)
+# Он отработает в самом конце загрузки ядра
+BOARD_C="user/shared/board.c"
 
-# Включаем CONFIG_GPIO_SYSFS в шаблоне конфигурации
-if [ -f "$KERNEL_DEFCONFIG" ]; then
-    sed -i 's/# CONFIG_GPIO_SYSFS is not set/CONFIG_GPIO_SYSFS=y/g' "$KERNEL_DEFCONFIG"
-    # На всякий случай проверяем, если строки не было — добавляем в конец
-    grep -q "CONFIG_GPIO_SYSFS=y" "$KERNEL_DEFCONFIG" || echo "CONFIG_GPIO_SYSFS=y" >> "$KERNEL_DEFCONFIG"
-fi
-
-# Включаем CONFIG_GPIO_SYSFS в текущем рабочем конфиге сборки
-if [ -f "$KERNEL_CONFIG" ]; then
-    sed -i 's/# CONFIG_GPIO_SYSFS is not set/CONFIG_GPIO_SYSFS=y/g' "$KERNEL_CONFIG"
-    grep -q "CONFIG_GPIO_SYSFS=y" "$KERNEL_CONFIG" || echo "CONFIG_GPIO_SYSFS=y" >> "$KERNEL_CONFIG"
+if [ -f "$BOARD_C" ]; then
+    # Находим функцию board_init и сразу после её открытия ({) вставляем принудительный вывод в 0 для пинов 39-45
+    sed -i '/void board_init(void)/,!b; { /{/a\    {\n        int p;\n        for(p=39; p<=45; p++) {\n            gpio_set_value(p, 0);\n        }\n    }' "$BOARD_C"
 fi
