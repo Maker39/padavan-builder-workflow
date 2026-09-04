@@ -1,26 +1,21 @@
 #!/bin/bash
 
-echo "=== ЗАПУСК КАСТОМНОГО СКРИПТА МОДИФИКАЦИИ ==="
+echo "=== ЗАПУСК ТОТАЛЬНОГО GPIO ПАТЧА ==?"
 
-# 1. Корректно определяем путь к конфигурации платы WT3020H16M в padavan-ng
-# find ищет файл board.h по всему дереву, независимо от того, в какой папке мы находимся
-BOARD_H=$(find . -name "board.h" | grep "WT3020H16M" | head -n 1)
+# Ищем основной файл инициализации логики платы
+BOARD_C=$(find . -name "board.c" | grep "user/shared/board.c" | head -n 1)
 
-if [ -n "$BOARD_H" ] && [ -f "$BOARD_H" ]; then
-    echo "FIRMWARE PATCH: Найдена конфигурация платы: $BOARD_H"
+if [ -n "$BOARD_C" ] && [ -f "$BOARD_C" ]; then
+    echo "FIRMWARE PATCH: Нашли файл $BOARD_C, внедряем полный сброс GPIO"
     
-    # Полностью отключаем встроенную LED-логику коммутатора MediaTek для этой платы
-    # Меняем BOARD_NUM_ETH_EPHY на 0
-    sed -i 's/#define BOARD_NUM_ETH_EPHY.*/#define BOARD_NUM_ETH_EPHY     0/g' "$BOARD_H"
+    # Делаем инъекцию кода в самое начало функции board_init
+    # Мы перебираем ВСЕ пины от 1 до 45. На всякий случай пишем и 0, и 1
+    # Если диод управляется напрямую или инверсно — один из циклов его гарантированно отключит.
+    sed -i '/void board_init(void)/,!b; { /{/a\    {\n        int p;\n        for(p=1; p<=45; p++) {\n            if(p == 9 || p == 11 || p == 12 || p == 13 || p == 14) continue; // Пропускаем системные пины (SPI/Flash)\n            gpio_set_value(p, 0);\n            gpio_set_value(p, 1);\n        }\n    }' "$BOARD_C"
     
-    # На всякий случай зачищаем остальные триггеры линков EPHY
-    sed -i 's/#define BOARD_HAS_EPHY_LNK.*/\/\/#define BOARD_HAS_EPHY_LNK/g' "$BOARD_H"
-    sed -i 's/#define BOARD_HAS_EPHY_WLM.*/\/\/#define BOARD_HAS_EPHY_WLM/g' "$BOARD_H"
-    
-    echo "=== Сводка изменений в board.h ==="
-    grep "BOARD_NUM_ETH_EPHY" "$BOARD_H"
+    echo "FIRMWARE PATCH: Код тотального гашения успешно внедрен."
 else
-    echo "FIRMWARE PATCH ERROR: Не удалось найти файл board.h для профиля WT3020H16M!"
+    echo "FIRMWARE PATCH ERROR: Не смогли найти user/shared/board.c"
 fi
 
-echo "=== ЗАВЕРШЕНИЕ КАСТОМНОГО СКРИПТА МОДИФИКАЦИИ ==="
+echo "=== ЗАВЕРШЕНИЕ ТОТАЛЬНОГО GPIO ПАТЧА ==="
