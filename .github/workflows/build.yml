@@ -101,22 +101,10 @@ jobs:
         TARGET_H="configs/boards/NEXX/WT3020H16M/board.h"
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET 13/' $TARGET_H
-        sed -i 's/#define BOARD_GPIO_LED_WIFI.*/#define BOARD_GPIO_LED_WIFI 72/' $TARGET_H
+        #sed -i 's/#define BOARD_GPIO_LED_WIFI.*/#define BOARD_GPIO_LED_WIFI 72/' $TARGET_H
         #sed -i 's/#define BOARD_GPIO_LED_POWER.*/#define BOARD_GPIO_LED_POWER 1/' $TARGET_H
-        sed -i '/BOARD_GPIO_LED_WIFI/a #define BOARD_GPIO_LED_SATA 15' $TARGET_H
-        # # Переводим встроенный свитч MT7620 из двухпортового режима в однопортовый (Kimax)
-        # sed -i 's/#define BOARD_NUM_ETH_EPHY\t2/#define BOARD_NUM_ETH_EPHY\t1/g' $TARGET_H
-        # sed -i 's/#define BOARD_NUM_ETH_EPHY 2/#define BOARD_NUM_ETH_EPHY 1/g' $TARGET_H        
-        # echo "=== Модификация board.h под Kimax BS-U35-WF ==="
-        # sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' configs/boards/NEXX/WT3020H16M/board.h
-        # sed -i 's/#define BOARD_DESC.*/#define BOARD_DESC "Blueendless Kimax Wi-Fi HDD"/' configs/boards/NEXX/WT3020H16M/board.h
-        # sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET 13/' configs/boards/NEXX/WT3020H16M/board.h
-        # sed -i 's/#define BOARD_GPIO_BTN_WPS.*/#undef  BOARD_GPIO_BTN_WPS/' configs/boards/NEXX/WT3020H16M/board.h
-        # sed -i 's/#define BOARD_GPIO_LED_POWER.*/#define BOARD_GPIO_LED_POWER 14/' configs/boards/NEXX/WT3020H16M/board.h
-        # sed -i 's/#define BOARD_GPIO_LED_WIFI.*/#define BOARD_GPIO_LED_WIFI 7/' configs/boards/NEXX/WT3020H16M/board.h
-        # sed -i 's/#define BOARD_GPIO_LED_SATA.*/#define BOARD_GPIO_LED_SATA 15/' configs/boards/NEXX/WT3020H16M/board.h
+        #sed -i '/BOARD_GPIO_LED_WIFI/a #define BOARD_GPIO_LED_SATA 15' $TARGET_H
 
-        # 6. Очищаем дерево сборки и запускаем компиляцию
         ./clear_tree.sh
         ./build_firmware.sh
         
