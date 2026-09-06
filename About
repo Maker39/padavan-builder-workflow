@@ -12,3 +12,5 @@ https://openwrt.org/toh/blueendless/u35wf
 Nexx WT3020H16M
 Reset: GPIO13
 RAM1: 128 MiB
+* LAN led горит постоянно (исправить не удалось)
+* HDD led не отключается из интерфейса
