@@ -1,0 +1,14 @@
+    padavan-builder-workflow
+сборка прошивки для Blueendless/Kimax U35NF
+CPU1: MediaTek MT7620A (580 MHz)
+FLA1: 16 MiB (Macronix MX25L12835FM2I-10G)
+RAM1: 128 MiB (Hynix HY5PS1G1631C-FP-S6)
+USB 2.0 High Speed 4-Port Hub Controller: JFD FE1.1s
+USB 3 to SATA Bridge Controller:  ASMedia ASM1153
+
+https://wikidevi.wi-cat.ru/Blueendless_U35NF
+https://openwrt.org/toh/blueendless/u35wf
+
+Nexx WT3020H16M
+Reset: GPIO13
+RAM1: 128 MiB
