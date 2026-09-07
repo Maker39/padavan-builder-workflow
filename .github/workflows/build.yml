@@ -94,23 +94,21 @@ jobs:
         # ./build_firmware.sh
         
         TARGET_H="configs/boards/NEXX/WT3020H16M/board.h"
-        
-        # Динамически находим точный путь к общему файлу board.c внутри проекта
         TARGET_C=$(find . -name "board.c" | grep "user/shared/boards" | head -n 1)
 
-        echo "Корректируем board.h..."
+        echo "=== Корректируем board.h ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          44/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      1/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
 
-        # Если файл board.c успешно найден, добавляем в него инициализацию регистра процессора
+        echo "=== Корректируем board.c ==="
         if [ -n "$TARGET_C" ] && [ -f "$TARGET_C" ]; then
-            echo "Файл board.c найден по пути: $TARGET_C. Вносим правку мультиплексора..."
-            sed -i '/void board_init(void)/a \ \ \ \ if (BOARD_GPIO_LED_LAN == 44) { mips_sys_set_padmode(PAD_MODE_NAND, PAD_MODE_GPIO); }' "$TARGET_C"
+            # Находим заголовок функции и сразу заменяем его на заголовок + наше условие в одну строку
+            sed -i 's/void board_init(void)/void board_init(void) { if (BOARD_GPIO_LED_LAN == 44) { mips_sys_set_padmode(PAD_MODE_NAND, PAD_MODE_GPIO); }/' $TARGET_C
         else
-            echo "Предупреждение: Общий файл board.c не найден через find, пропускаем инжекцию."
+            echo "Внимание: Файл board.c не найден через find!"
         fi
 
         ./clear_tree.sh
