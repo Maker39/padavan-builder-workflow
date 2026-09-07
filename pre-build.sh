@@ -1,9 +1,10 @@
 #!/bin/bash
 
 # Путь к папке вашей платы в исходниках Padavan (замените WT3020 на имя вашего профиля, если оно другое)
-BOARD_DIR="trunk/user/shared/boards/WT3020"
+BOARD_DIR="trunk/user/shared/boards/WT3020H16M"
+#TARGET_H="configs/boards/NEXX/WT3020H16M/board.h"
 
-# 1. Меняем GPIO светодиода Ethernet на 44 в board.h
+echo 1. Меняем GPIO светодиода Ethernet на 44 в board.h
 sed -i 's/#define BOARD_GPIO_LED_ETH.*/#define BOARD_GPIO_LED_ETH          44/' "$BOARD_DIR/board.h"
 sed -i 's/#define BOARD_GPIO_LED_ETH_INV.*/#define BOARD_GPIO_LED_ETH_INV      1/' "$BOARD_DIR/board.h"
 
