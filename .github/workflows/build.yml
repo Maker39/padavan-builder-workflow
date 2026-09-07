@@ -78,13 +78,13 @@ jobs:
         # Заставляем Kconfig ядра по умолчанию всегда выбирать размер памяти из загрузчика
         sed -i '/build_kernel()/a \    echo "=== АКТИВИРУЕМ АВТООПРЕДЕЛЕНИЕ RAM ==="\n    find linux/linux-3.4.x/arch/mips/ralink/ -name "Kconfig" -exec sed -i "s/config RALINK_RAM_SIZE_FROM_BOOTLOADER/config RALINK_RAM_SIZE_FROM_BOOTLOADER\\n\\tbool\\n\\tdefault y\\n\\tconfig DISABLED_BOOTLOADER/g" {} +' build_firmware.sh
 
-        #TARGET_H="configs/boards/NEXX/WT3020H16M/board.h"
-        #sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
-        #sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET 13/' $TARGET_H
-        #sed -i 's/#undef BOARD_GPIO_LED_LAN.*/#undef BOARD_GPIO_LED_LAN/' $TARGET_H
-        #sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN 44/' $TARGET_H
-        #sed -i 's/#define BOARD_NUM_ETH_LEDS.*/#define BOARD_NUM_ETH_LEDS 1/' $TARGET_H
-        #sed -i 's/#define BOARD_GPIO_LED_WIFI.*/#define BOARD_GPIO_LED_WIFI 72/' $TARGET_H
+        TARGET_H="configs/boards/NEXX/WT3020H16M/board.h"
+        sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
+        sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET 13/' $TARGET_H
+        sed -i 's/#undef BOARD_GPIO_LED_LAN.*/#undef BOARD_GPIO_LED_LAN/' $TARGET_H
+        sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN 44/' $TARGET_H
+        sed -i 's/#define BOARD_NUM_ETH_LEDS.*/#define BOARD_NUM_ETH_LEDS 1/' $TARGET_H
+        sed -i 's/#define BOARD_GPIO_LED_WIFI.*/#define BOARD_GPIO_LED_WIFI 72/' $TARGET_H
         #sed -i 's/#define BOARD_GPIO_LED_POWER.*/#define BOARD_GPIO_LED_POWER 1/' $TARGET_H
         #sed -i '/BOARD_GPIO_LED_WIFI/a #define BOARD_GPIO_LED_SATA 15' $TARGET_H
 
