@@ -78,21 +78,38 @@ jobs:
         # Заставляем Kconfig ядра по умолчанию всегда выбирать размер памяти из загрузчика
         sed -i '/build_kernel()/a \    echo "=== АКТИВИРУЕМ АВТООПРЕДЕЛЕНИЕ RAM ==="\n    find linux/linux-3.4.x/arch/mips/ralink/ -name "Kconfig" -exec sed -i "s/config RALINK_RAM_SIZE_FROM_BOOTLOADER/config RALINK_RAM_SIZE_FROM_BOOTLOADER\\n\\tbool\\n\\tdefault y\\n\\tconfig DISABLED_BOOTLOADER/g" {} +' build_firmware.sh
 
-        TARGET_H="configs/boards/NEXX/WT3020H16M/board.h"
-        TARGET_C="configs/boards/NEXX/WT3020H16M/board.c"
-        sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
-        sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET 13/' $TARGET_H
-        sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN 44/' $TARGET_H
-        sed -i 's/#define BOARD_NUM_ETH_LEDS.*/#define BOARD_NUM_ETH_LEDS 1/' $TARGET_H
-        sed -i 's/#define BOARD_GPIO_LED_WIFI.*/#define BOARD_GPIO_LED_WIFI 72/' $TARGET_H
-        #sed -i 's/#define BOARD_GPIO_LED_POWER.*/#define BOARD_GPIO_LED_POWER 1/' $TARGET_H
-        #sed -i '/BOARD_GPIO_LED_WIFI/a #define BOARD_GPIO_LED_SATA 15' $TARGET_H
+        # TARGET_H="configs/boards/NEXX/WT3020H16M/board.h"
+        # TARGET_C="configs/boards/NEXX/WT3020H16M/board.c"
+        # sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
+        # sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET 13/' $TARGET_H
+        # sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN 44/' $TARGET_H
+        # sed -i 's/#define BOARD_NUM_ETH_LEDS.*/#define BOARD_NUM_ETH_LEDS 1/' $TARGET_H
+        # sed -i 's/#define BOARD_GPIO_LED_WIFI.*/#define BOARD_GPIO_LED_WIFI 72/' $TARGET_H
+        # #sed -i 's/#define BOARD_GPIO_LED_POWER.*/#define BOARD_GPIO_LED_POWER 1/' $TARGET_H
+        # #sed -i '/BOARD_GPIO_LED_WIFI/a #define BOARD_GPIO_LED_SATA 15' $TARGET_H
 
-        # Добавление mips_sys_set_padmode в board.c
-        sed -i '/void board_init(void)/a \ \ \ \ mips_sys_set_padmode(PAD_MODE_NAND, PAD_MODE_GPIO);' $TARGET_C
+        # # Добавление mips_sys_set_padmode в board.c
+        # sed -i '/void board_init(void)/a \ \ \ \ mips_sys_set_padmode(PAD_MODE_NAND, PAD_MODE_GPIO);' $TARGET_C
+        # ./clear_tree.sh
+        # ./build_firmware.sh
+        
+        TARGET_H="configs/boards/NEXX/WT3020H16M/board.h"
+        TARGET_C="user/shared/boards/board.c"
+
+        # 1. Корректируем board.h вашей конкретной платы
+        sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
+        sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          44/' $TARGET_H
+        sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      1/' $TARGET_H
+        sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
+        sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
+
+        # 2. Внедряем инициализацию PAD_MODE_NAND в общий файл board.c
+        # Чтобы код применился только для вашей платы, проверяем BOARD_GPIO_LED_LAN == 44
+        sed -i '/void board_init(void)/a \ \ \ \ if (BOARD_GPIO_LED_LAN == 44) { mips_sys_set_padmode(PAD_MODE_NAND, PAD_MODE_GPIO); }' $TARGET_C
+
         ./clear_tree.sh
         ./build_firmware.sh
-        
+       
         # 7. Поиск готового файла прошивки
         FW_FILE_NAME="$(find images -type f -regextype posix-extended -iregex ".*\.(trx|bin)$" -printf "%T@\t%f\n" | sort -V | tail -1 | cut -f2)"
         [[ -n $FW_FILE_NAME ]] || { echo "Firmware file not found"; exit 1; }
