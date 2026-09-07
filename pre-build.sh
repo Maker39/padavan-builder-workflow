@@ -2,8 +2,8 @@
 
 # Находим путь к файлу board.h для выбранного профиля платы (например, WT3020)
 # В зависимости от базового конфига, замените WT3020 на имя вашей целевой платы, если выбрали другую
-BOARD_H_PATH="trunk/user/shared/boards/WT3020H16M/board.h"
-BOARD_C_PATH="trunk/user/shared/boards/WT3020H16M/board.c"
+BOARD_H_PATH="trunk/user/shared/boards/WT3020/board.h"
+BOARD_C_PATH="trunk/user/shared/boards/WT3020/board.c"
 
 # 1. Меняем GPIO светодиода Ethernet на 44
 sed -i 's/#define BOARD_GPIO_LED_ETH.*/#define BOARD_GPIO_LED_ETH          44/' $BOARD_H_PATH
