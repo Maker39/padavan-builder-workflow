@@ -95,27 +95,23 @@ jobs:
         
         TARGET_H="configs/boards/NEXX/WT3020H16M/board.h"
         TARGET_C=$(find . -name "board.c" | grep "user/shared/boards" | head -n 1)
-
-        echo "=== Фикс кавычек и синтаксиса build.config ==="
-        # Убеждаемся, что PRODUCT_ID обернут в кавычки для парсера GitHub
-        sed -i 's/CONFIG_FIRMWARE_PRODUCT_ID=WT3020H16M/CONFIG_FIRMWARE_PRODUCT_ID="WT3020H16M"/' build.config
-
+        
         echo "=== Модификация board.h для Kimax ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          44/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      1/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
-
+        
         echo "=== Модификация board.c ==="
         if [ -n "$TARGET_C" ] && [ -f "$TARGET_C" ]; then
-            # Безопасная однострочная замена точки входа в функцию без использования переносов \a
+            # Безопасная однострочная замена точки входа в функцию без использования капризных переносов \a
             sed -i 's/void board_init(void)/void board_init(void) { if (BOARD_GPIO_LED_LAN == 44) { mips_sys_set_padmode(PAD_MODE_NAND, PAD_MODE_GPIO); }/' $TARGET_C
             echo "Правка в board.c успешно внесена."
         else
             echo "Внимание: Файл board.c не найден через find!"
         fi
-
+        
         ./clear_tree.sh
         ./build_firmware.sh
 
