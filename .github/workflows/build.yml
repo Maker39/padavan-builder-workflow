@@ -93,24 +93,22 @@ jobs:
         # ./clear_tree.sh
         # ./build_firmware.sh
         
-        # 4. ПОДХОД OPENWRT: Меняем логику инициализации памяти во всех файлах платы WT3020H16M
-        # Переводим сборщик в режим автоопределения RAM из загрузчика (Breed)
+        # 4. ПОДХОД OPENWRT: Меняем логику памяти БЕЗ опасных команд find
         BOARD_DIR="configs/boards/NEXX/WT3020H16M"
          
-        # Правим конфигурацию ядра (Включаем чтение из Bootloader и отключаем жесткий лимит)
+        # Правим файлы конфигурации ядра напрямую по точным путям
         sed -i 's/CONFIG_RALINK_RAM_SIZE=64/# CONFIG_RALINK_RAM_SIZE is not set/g' $BOARD_DIR/kernel-3.4.x.config
         sed -i 's/CONFIG_RALINK_RAM_SIZE_FROM_BOOTLOADER=n/CONFIG_RALINK_RAM_SIZE_FROM_BOOTLOADER=y/g' $BOARD_DIR/kernel-3.4.x.config
         sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n\nCONFIG_RT2880_DRAM_128M=y/g' $BOARD_DIR/kernel-3.4.x.config
         
-        # ИСПРАВЛЕНО: Добавлена точка (./), чтобы поиск шел строго внутри папки платы и не лез в систему
-        find "./$BOARD_DIR/" -type f -exec sed -i 's/DRAM_64M/DRAM_128M/g' {} +
-        find "./$BOARD_DIR/" -type f -exec sed -i 's/RAM_SIZE=64/RAM_SIZE=128/g' {} +
+        # Точечно правим файлы разметки платы вместо слепого поиска по всей системе
+        sed -i 's/DRAM_64M/DRAM_128M/g' $BOARD_DIR/board.h
+        sed -i 's/RAM_SIZE=64/RAM_SIZE=128/g' $BOARD_DIR/board.mk
         
-        # === ШАГ 5 УДАЛЕН ИЗ-ЗА ОШИБОК СИНТАКСИСА ===
-      
         # === НАШИ КОРРЕКТНЫЕ ПРАВКИ LED И КНОПОК ===
         TARGET_H="configs/boards/NEXX/WT3020H16M/board.h"
-        TARGET_C=$(find . -name "board.c" | grep "user/shared/boards" | head -n 1)
+        # Прописываем точный, фиксированный путь к board.c для репозитория padavan-ng
+        TARGET_C="user/shared/boards/board.c"
         
         echo "=== Модификация board.h для Kimax ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
@@ -120,9 +118,12 @@ jobs:
         sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
         
         echo "=== Модификация board.c ==="
-        if [ -n "$TARGET_C" ] && [ -f "$TARGET_C" ]; then
+        if [ -f "$TARGET_C" ]; then
             sed -i 's/void board_init(void)/void board_init(void) { if (BOARD_GPIO_LED_LAN == 44) { mips_sys_set_padmode(PAD_MODE_NAND, PAD_MODE_GPIO); }/' $TARGET_C
             echo "Правка в board.c успешно внесена."
+        else
+            echo "Ошибка: Общий файл board.c не найден по пути $TARGET_C"
+            exit 1
         fi
         
         ./clear_tree.sh
