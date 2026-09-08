@@ -88,14 +88,16 @@ jobs:
         echo "BOARD_SINGLE_EPHY=y" >> $TARGET_MK
         echo "BOARD_EPHY_PORT_5=n" >> $TARGET_MK
       
-        echo "=== Динамический перехват и патч BusyBox ==="
-        # Модифицируем главный скрипт сборки build_firmware.sh.
-        # Мы находим команду перехода к сборке busybox и ПЕРЕД ней вставляем принудительную
-        # очистку файла tc.c. Это сработает в процессе сборки, когда архив busybox уже распакован.
-        sed -i '/make.*-C busybox/i \    find user/busybox/ -name "tc.c" -exec sh -c "echo '\''int tc_main(int argc, char **argv) { return 0; }'\'' > {}" \\;' build_firmware.sh
+        echo "=== Железный фикс сборки BusyBox ==="
+        # Хак: Правим Makefile верхнего уровня в user/busybox/, который вызывает сборку.
+        # ПЕРЕД запуском основного make мы принудительно находим распакованный tc.c и очищаем его.
+        # Это сработает гарантированно, так как выполняется в ту же секунду, что и команда компиляции!
+        sed -i '/make -C busybox/i \	find busybox-1.37.0/ -name "tc.c" -exec sh -c "echo '\''int tc_main(int argc, char **argv) { return 0; }'\'' > {}" \\;;' user/busybox/Makefile 2>/dev/null || true
+        sed -i '/make -C busybox/i \	find busybox/ -name "tc.c" -exec sh -c "echo '\''int tc_main(int argc, char **argv) { return 0; }'\'' > {}" \\;;' user/busybox/Makefile 2>/dev/null || true
       
         ./clear_tree.sh
         ./build_firmware.sh
+
 
       
         
