@@ -96,7 +96,7 @@ jobs:
         # На всякий случай проверяем, записался ли файл (выводим в лог для контроля)
         echo "Содержимое запатченного файла tc.c:"
         find user/busybox/ -name "tc.c" -exec cat {} \;
-      
+        
         ./clear_tree.sh
         ./build_firmware.sh
 
