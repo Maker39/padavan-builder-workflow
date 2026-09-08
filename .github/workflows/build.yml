@@ -72,8 +72,8 @@ jobs:
         sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      1/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
-        sed -i 's/#define BOARD_NUM_ETH_LEDS.*/#define #define BOARD_NUM_ETH_LEDS    1/' $TARGET_H
-        #sed -i 's/#define BOARD_NUM_ETH_EPHY.*/#define #define BOARD_NUM_ETH_EPHY    1/' $TARGET_H
+        sed -i 's/#define BOARD_NUM_ETH_LEDS.*/#define BOARD_NUM_ETH_LEDS    1/' $TARGET_H
+        sed -i 's/#define BOARD_NUM_ETH_EPHY.*/#define BOARD_NUM_ETH_EPHY    1/' $TARGET_H
         echo "=== Настройка свитча (board.mk) ==="
         sed -i 's/BOARD_SINGLE_EPHY.*/BOARD_SINGLE_EPHY=y/g' $TARGET_MK
         sed -i 's/BOARD_EPHY_PORT_5.*/BOARD_EPHY_PORT_5=n/g' $TARGET_MK
