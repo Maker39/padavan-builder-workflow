@@ -88,10 +88,10 @@ jobs:
         echo "BOARD_SINGLE_EPHY=y" >> $TARGET_MK
         echo "BOARD_EPHY_PORT_5=n" >> $TARGET_MK
       
-        echo "=== Безопасная генерация конфигурации BusyBox ==="
-        # Просто вызываем внутренний defconfig самого пакета busybox, 
-        # чтобы он сгенерировал чистый и корректный .config файл без поиска шаблонов
-        make -C user/busybox defconfig
+        echo "=== Применение фикса локали для компиляции BusyBox ==="
+        # Сбрасываем локали компилятора, чтобы утилиты BusyBox (tr/awk) не ломали синтаксис при сборке
+        export LANG=C
+        export LC_ALL=C
         
         ./clear_tree.sh
         ./build_firmware.sh
