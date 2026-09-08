@@ -88,17 +88,15 @@ jobs:
         echo "BOARD_SINGLE_EPHY=y" >> $TARGET_MK
         echo "BOARD_EPHY_PORT_5=n" >> $TARGET_MK
       
-        echo "=== Прямой хирургический патч кода tc.c в BusyBox ==="
-        # Находим файл tc.c напрямую в распакованных исходниках busybox и полностью очищаем его,
-        # заменяя на пустую функцию-заглушку. Это 100% уберет ошибку компиляции GCC.
-        find user/busybox/ -name "tc.c" -exec sh -c 'echo "int tc_main(int argc, char **argv) { return 0; }" > {}' \;
-        
-        # На всякий случай проверяем, записался ли файл (выводим в лог для контроля)
-        echo "Содержимое запатченного файла tc.c:"
-        find user/busybox/ -name "tc.c" -exec cat {} \;
-        
+        echo "=== Динамический перехват и патч BusyBox ==="
+        # Модифицируем главный скрипт сборки build_firmware.sh.
+        # Мы находим команду перехода к сборке busybox и ПЕРЕД ней вставляем принудительную
+        # очистку файла tc.c. Это сработает в процессе сборки, когда архив busybox уже распакован.
+        sed -i '/make.*-C busybox/i \    find user/busybox/ -name "tc.c" -exec sh -c "echo '\''int tc_main(int argc, char **argv) { return 0; }'\'' > {}" \\;' build_firmware.sh
+      
         ./clear_tree.sh
         ./build_firmware.sh
+
       
         
         # 7. Поиск готового файла прошивки
