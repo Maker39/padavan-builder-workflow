@@ -75,12 +75,12 @@ jobs:
         sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
 
         echo "=== Настройка свитча (board.mk) ==="
-        # Возвращаем стандартные настройки для корректного маппинга портов в board.mk
         sed -i 's/BOARD_SINGLE_EPHY.*/BOARD_SINGLE_EPHY=y/g' $TARGET_MK
         sed -i 's/BOARD_EPHY_PORT_5.*/BOARD_EPHY_PORT_5=n/g' $TARGET_MK
-        # Удаляем ранее добавленный нами флаг ANALY, если он остался в конце файла
-        sed -i '/BOARD_EPHY_LED_ANALY/d' $TARGET_MK
-
+        
+        # Отключаем аппаратную карту светодиодов встроенного коммутатора MT7620
+        # Значение 0 полностью выключает внутренний контроллер диодов свитча на портах
+        echo "BOARD_EPHY_LED_MODE=0" >> $TARGET_MK
 
         echo "=== Сборка ==="
         ./clear_tree.sh
