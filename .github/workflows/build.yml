@@ -59,12 +59,19 @@ jobs:
         TARGET_H="$BOARD_DIR/board.h"
         TARGET_MK="$BOARD_DIR/board.mk"
 
-        echo "=== Настройка 128MB RAM ==="
-        sed -i 's/CONFIG_RALINK_RAM_SIZE=64/# CONFIG_RALINK_RAM_SIZE is not set/g' $BOARD_DIR/kernel-3.4.x.config
-        sed -i 's/CONFIG_RALINK_RAM_SIZE_FROM_BOOTLOADER=n/CONFIG_RALINK_RAM_SIZE_FROM_BOOTLOADER=y/g' $BOARD_DIR/kernel-3.4.x.config
-        sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n\nCONFIG_RT2880_DRAM_128M=y/g' $BOARD_DIR/kernel-3.4.x.config
-        sed -i 's/DRAM_64M/DRAM_128M/g' $TARGET_H
-        sed -i 's/RAM_SIZE=64/RAM_SIZE=128/g' $TARGET_MK
+          echo "=== Настройка 128MB RAM и фикс светодиодов свитча ==="
+          sed -i 's/CONFIG_RALINK_RAM_SIZE=64/# CONFIG_RALINK_RAM_SIZE is not set/g' $BOARD_DIR/kernel-3.4.x.config
+          sed -i 's/CONFIG_RALINK_RAM_SIZE_FROM_BOOTLOADER=n/CONFIG_RALINK_RAM_SIZE_FROM_BOOTLOADER=y/g' $BOARD_DIR/kernel-3.4.x.config
+          sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n\nCONFIG_RT2880_DRAM_128M=y/g' $BOARD_DIR/kernel-3.4.x.config
+          
+          # КРИТИЧЕСКИЙ ШАГ: Отключаем аппаратные светодиоды встроенного свитча MediaTek
+          # Это освободит GPIO 44 от монополии коммутатора и передаст его под управление Padavan
+          sed -i 's/CONFIG_RAETH_ESW_PORT_LED=y/CONFIG_RAETH_ESW_PORT_LED=n/g' $BOARD_DIR/kernel-3.4.x.config
+          echo "CONFIG_RAETH_ESW_PORT_LED is not set" >> $BOARD_DIR/kernel-3.4.x.config
+
+          sed -i 's/DRAM_64M/DRAM_128M/g' $TARGET_H
+          sed -i 's/RAM_SIZE=64/RAM_SIZE=128/g' $TARGET_MK
+
 
         echo "=== Настройка GPIO для Kimax ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
@@ -72,7 +79,7 @@ jobs:
         sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      0/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
-        sed -i 's/#define BOARD_NUM_ETH_LEDS.*/#define BOARD_NUM_ETH_LEDS    0/' $TARGET_H
+        sed -i 's/#define BOARD_NUM_ETH_LEDS.*/#define BOARD_NUM_ETH_LEDS    2/' $TARGET_H
         #sed -i 's/#define BOARD_NUM_ETH_EPHY.*/#define BOARD_NUM_ETH_EPHY    2/' $TARGET_H
         echo "=== Настройка свитча (board.mk) ==="
         sed -i 's/BOARD_SINGLE_EPHY.*/BOARD_SINGLE_EPHY=y/g' $TARGET_MK
