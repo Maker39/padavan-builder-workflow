@@ -76,25 +76,30 @@ jobs:
         # === НАШИ КОРРЕКТНЫЕ ПРАВКИ LED И КНОПОК ДЛЯ KIMAX ===
         TARGET_H="configs/boards/NEXX/WT3020H16M/board.h"
         TARGET_MK="configs/boards/NEXX/WT3020H16M/board.mk"
-        
-        echo "=== Модификация board.h для Kimax ==="
+        BOARD_DIR="configs/boards/NEXX/WT3020H16M"
+         
+        echo "=== Разметка 128MB RAM для Breed ==="
+        sed -i 's/CONFIG_RALINK_RAM_SIZE=64/# CONFIG_RALINK_RAM_SIZE is not set/g' $BOARD_DIR/kernel-3.4.x.config
+        sed -i 's/CONFIG_RALINK_RAM_SIZE_FROM_BOOTLOADER=n/CONFIG_RALINK_RAM_SIZE_FROM_BOOTLOADER=y/g' $BOARD_DIR/kernel-3.4.x.config
+        sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n\nCONFIG_RT2880_DRAM_128M=y/g' $BOARD_DIR/kernel-3.4.x.config
+        sed -i 's/DRAM_64M/DRAM_128M/g' $BOARD_DIR/board.h
+        sed -i 's/RAM_SIZE=64/RAM_SIZE=128/g' $BOARD_DIR/board.mk
+      
+        echo "=== Модификация board.h для Kimax (GPIO 44) ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          44/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      1/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
         
-        echo "=== Активация GPIO2/NAND через board.mk ==="
+        echo "=== Освобождение GPIO2/NAND через board.mk ==="
         echo "BOARD_SINGLE_EPHY=y" >> $TARGET_MK
         echo "BOARD_EPHY_PORT_5=n" >> $TARGET_MK
-      
-        echo "=== Динамический патч tc.c прямо в сборочном процессе ==="
-        # Находим функцию build_user в скрипте build_firmware.sh 
-        # и инжектируем туда команду, которая очистит файл tc.c прямо перед началом компиляции утилит
-        sed -i '/build_user()/a \    find user/busybox/ -name "tc.c" -exec cp /dev/null {} \\;' build_firmware.sh
         
-        echo "=== Запуск сборки прошивки ==="
+        echo "=== Запуск чистой сборки прошивки ==="
+        ./clear_tree.sh
         ./build_firmware.sh
+
  
 
       
