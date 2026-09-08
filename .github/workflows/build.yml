@@ -61,17 +61,17 @@ jobs:
         cd padavan-ng/trunk
         #####
 
-        # # 4. ПОДХОД OPENWRT: Меняем логику памяти БЕЗ опасных глобальных команд find
-        # BOARD_DIR="configs/boards/NEXX/WT3020H16M"
+        # 4. ПОДХОД OPENWRT: Меняем логику памяти БЕЗ опасных глобальных команд find
+        BOARD_DIR="configs/boards/NEXX/WT3020H16M"
          
-        # # Точечно правим конфигурацию ядра по фиксированному пути
-        # sed -i 's/CONFIG_RALINK_RAM_SIZE=64/# CONFIG_RALINK_RAM_SIZE is not set/g' $BOARD_DIR/kernel-3.4.x.config
-        # sed -i 's/CONFIG_RALINK_RAM_SIZE_FROM_BOOTLOADER=n/CONFIG_RALINK_RAM_SIZE_FROM_BOOTLOADER=y/g' $BOARD_DIR/kernel-3.4.x.config
-        # sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n\nCONFIG_RT2880_DRAM_128M=y/g' $BOARD_DIR/kernel-3.4.x.config
+        # Точечно правим конфигурацию ядра по фиксированному пути
+        sed -i 's/CONFIG_RALINK_RAM_SIZE=64/# CONFIG_RALINK_RAM_SIZE is not set/g' $BOARD_DIR/kernel-3.4.x.config
+        sed -i 's/CONFIG_RALINK_RAM_SIZE_FROM_BOOTLOADER=n/CONFIG_RALINK_RAM_SIZE_FROM_BOOTLOADER=y/g' $BOARD_DIR/kernel-3.4.x.config
+        sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n\nCONFIG_RT2880_DRAM_128M=y/g' $BOARD_DIR/kernel-3.4.x.config
         
-        # # Прямая хирургическая правка файлов разметки вместо слепого поиска по всей системе
-        # sed -i 's/DRAM_64M/DRAM_128M/g' $BOARD_DIR/board.h
-        # sed -i 's/RAM_SIZE=64/RAM_SIZE=128/g' $BOARD_DIR/board.mk
+        # Прямая хирургическая правка файлов разметки вместо слепого поиска по всей системе
+        sed -i 's/DRAM_64M/DRAM_128M/g' $BOARD_DIR/board.h
+        sed -i 's/RAM_SIZE=64/RAM_SIZE=128/g' $BOARD_DIR/board.mk
         
         # === НАШИ КОРРЕКТНЫЕ ПРАВКИ LED И КНОПОК ДЛЯ KIMAX ===
         TARGET_H="configs/boards/NEXX/WT3020H16M/board.h"
