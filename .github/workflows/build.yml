@@ -77,6 +77,9 @@ jobs:
         TARGET_H="configs/boards/NEXX/WT3020H16M/board.h"
         TARGET_MK="configs/boards/NEXX/WT3020H16M/board.mk"
         
+        TARGET_H="configs/boards/NEXX/WT3020H16M/board.h"
+        TARGET_MK="configs/boards/NEXX/WT3020H16M/board.mk"
+        
         echo "=== Модификация board.h для Kimax ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          44/' $TARGET_H
@@ -88,14 +91,12 @@ jobs:
         echo "BOARD_SINGLE_EPHY=y" >> $TARGET_MK
         echo "BOARD_EPHY_PORT_5=n" >> $TARGET_MK
       
-        echo "=== Аварийный обход бага компиляции BusyBox 1.37.0 ==="
-        # Так как система сборки padavan-ng пересоздает конфигурацию, мы правим Makefile самого BusyBox.
-        # Добавляем принудительное отключение сборки модуля tc.c через флаги компилятора CFLAGS.
-        # Опция "-DCONFIG_TC=0 -DCONFIG_FEATURE_TC_INGRESS=0" заставит GCC проигнорировать проблемный файл tc.c!
-        sed -i 's/$(MAKE) -C busybox-1.37.0/$(MAKE) -C busybox-1.37.0 EXTRA_CFLAGS="-DCONFIG_TC=0 -DCONFIG_FEATURE_TC_INGRESS=0"/g' user/busybox/Makefile
-      
-        ./clear_tree.sh
+        # КРИТИЧЕСКИЙ ФИКС: Убираем запуск ./clear_tree.sh, который затирал файлы BusyBox 
+        # и приводил к циклическому "Error 2" на современных хостах Ubuntu.
+        
+        echo "=== Запуск сборки прошивки ==="
         ./build_firmware.sh
+
       
         
         # 7. Поиск готового файла прошивки
