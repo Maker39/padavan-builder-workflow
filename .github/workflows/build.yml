@@ -98,9 +98,6 @@ jobs:
         ./clear_tree.sh
         ./build_firmware.sh
 
-
-
-
        
         # 7. Поиск готового файла прошивки
         FW_FILE_NAME="$(find images -type f -regextype posix-extended -iregex ".*\.(trx|bin)$" -printf "%T@\t%f\n" | sort -V | tail -1 | cut -f2)"
