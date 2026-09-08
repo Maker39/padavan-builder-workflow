@@ -88,10 +88,18 @@ jobs:
         echo "BOARD_SINGLE_EPHY=y" >> $TARGET_MK
         echo "BOARD_EPHY_PORT_5=n" >> $TARGET_MK
       
-        echo "=== Применение патча сборки BusyBox 1.37.0 ==="
-        # Исправляем баг Makefile в padavan-ng для сборщика GitHub Actions.
-        # Мы принудительно очищаем переменные MAKEFLAGS при сборке busybox, чтобы он не падал.
-        sed -i 's/$(MAKE) -C busybox-1.37.0/$(MAKE) MAKEFLAGS= -C busybox-1.37.0/g' user/busybox/Makefile 2>/dev/null || sed -i 's/$(MAKE) -C busybox/$(MAKE) MAKEFLAGS= -C busybox/g' user/busybox/Makefile
+        echo "=== Патч BusyBox 1.37.0: Исправление ошибки Error 2 ==="
+        # Отключаем компиляцию утилиты tc (Traffic Control) во внутреннем конфиге busybox,
+        # которая ломает сборку на современных ядрах Ubuntu в GitHub Actions
+        BBOX_CONFIG="user/busybox/busybox-1.37.x.config"
+        if [ -f "$BBOX_CONFIG" ]; then
+            sed -i 's/CONFIG_TC=y/CONFIG_TC=n/' $BBOX_CONFIG
+            sed -i 's/CONFIG_FEATURE_TC_INGRESS=y/CONFIG_FEATURE_TC_INGRESS=n/' $BBOX_CONFIG
+        else
+            # Если файл называется иначе, отключаем флаги во всех .config файлах внутри папки busybox
+            find user/busybox/ -name "*.config" -exec sed -i 's/CONFIG_TC=y/CONFIG_TC=n/' {} +
+            find user/busybox/ -name "*.config" -exec sed -i 's/CONFIG_FEATURE_TC_INGRESS=y/CONFIG_FEATURE_TC_INGRESS=n/' {} +
+        fi
       
         ./clear_tree.sh
         ./build_firmware.sh
