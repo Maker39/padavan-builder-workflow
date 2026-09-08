@@ -88,20 +88,14 @@ jobs:
         echo "BOARD_SINGLE_EPHY=y" >> $TARGET_MK
         echo "BOARD_EPHY_PORT_5=n" >> $TARGET_MK
       
-        echo "=== Безопасный обход бага BusyBox 1.37.0 ==="
-        # Находим дефолтный шаблон конфигурации busybox для архитектуры роутера
-        BBOX_TEMPLATE=$(find user/busybox/configs/ -name "busybox-*.config" -o -name "busybox.config" | head -n 1)
-        
-        if [ -n "$BBOX_TEMPLATE" ] && [ -f "$BBOX_TEMPLATE" ]; then
-            echo "Шаблон BusyBox найден: $BBOX_TEMPLATE. Копируем в рабочую область..."
-            cp "$BBOX_TEMPLATE" user/busybox/.config
-        else
-            echo "Внимание: Шаблон в configs не найден, пробуем сгенерировать defconfig..."
-            make -C user/busybox defconfig
-        fi
+        echo "=== Безопасная генерация конфигурации BusyBox ==="
+        # Просто вызываем внутренний defconfig самого пакета busybox, 
+        # чтобы он сгенерировал чистый и корректный .config файл без поиска шаблонов
+        make -C user/busybox defconfig
         
         ./clear_tree.sh
         ./build_firmware.sh
+
 
        
         # 7. Поиск готового файла прошивки
