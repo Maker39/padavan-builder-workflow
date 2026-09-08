@@ -88,13 +88,14 @@ jobs:
         echo "BOARD_SINGLE_EPHY=y" >> $TARGET_MK
         echo "BOARD_EPHY_PORT_5=n" >> $TARGET_MK
       
-        echo "=== Применение фикса локали для компиляции BusyBox ==="
-        # Сбрасываем локали компилятора, чтобы утилиты BusyBox (tr/awk) не ломали синтаксис при сборке
-        export LANG=C
-        export LC_ALL=C
-        
+        echo "=== Применение патча сборки BusyBox 1.37.0 ==="
+        # Исправляем баг Makefile в padavan-ng для сборщика GitHub Actions.
+        # Мы принудительно очищаем переменные MAKEFLAGS при сборке busybox, чтобы он не падал.
+        sed -i 's/$(MAKE) -C busybox-1.37.0/$(MAKE) MAKEFLAGS= -C busybox-1.37.0/g' user/busybox/Makefile 2>/dev/null || sed -i 's/$(MAKE) -C busybox/$(MAKE) MAKEFLAGS= -C busybox/g' user/busybox/Makefile
+      
         ./clear_tree.sh
         ./build_firmware.sh
+
 
 
        
