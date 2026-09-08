@@ -73,7 +73,7 @@ jobs:
         sed -i 's/DRAM_64M/DRAM_128M/g' $BOARD_DIR/board.h
         sed -i 's/RAM_SIZE=64/RAM_SIZE=128/g' $BOARD_DIR/board.mk
         
-
+        # === НАШИ КОРРЕКТНЫЕ ПРАВКИ LED И КНОПОК ДЛЯ KIMAX ===
         TARGET_H="configs/boards/NEXX/WT3020H16M/board.h"
         TARGET_MK="configs/boards/NEXX/WT3020H16M/board.mk"
         
@@ -85,10 +85,12 @@ jobs:
         sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
         
         echo "=== Активация GPIO2/NAND через board.mk ==="
-        # Этот шаг заставит систему сборки padavan-ng автоматически применить mips_sys_set_padmode
-        # БЕЗ рискованной правки исходников ядра Си вручную
         echo "BOARD_SINGLE_EPHY=y" >> $TARGET_MK
         echo "BOARD_EPHY_PORT_5=n" >> $TARGET_MK
+      
+        echo "=== Обход бага компиляции BusyBox 1.37.0 ==="
+        # Этот фикс подложит правильный .config для busybox и не даст make упасть
+        cp user/busybox/configs/busybox-1.37.x.config user/busybox/.config 2>/dev/null || cp user/busybox/configs/busybox.config user/busybox/.config
         
         ./clear_tree.sh
         ./build_firmware.sh
