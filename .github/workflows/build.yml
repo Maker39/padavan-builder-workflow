@@ -77,6 +77,7 @@ jobs:
         TARGET_H="configs/boards/NEXX/WT3020H16M/board.h"
         TARGET_MK="configs/boards/NEXX/WT3020H16M/board.mk"
         
+
         echo "=== Модификация board.h для Kimax ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          44/' $TARGET_H
