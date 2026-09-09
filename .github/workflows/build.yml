@@ -81,13 +81,13 @@ jobs:
         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
 
-        echo "=== Настройка свитча (board.mk) ==="
+        echo "=== Настройка свитча и освобождение пина 44 ==="
         sed -i 's/BOARD_SINGLE_EPHY.*/BOARD_SINGLE_EPHY=y/g' $TARGET_MK
         sed -i 's/BOARD_EPHY_PORT_5.*/BOARD_EPHY_PORT_5=n/g' $TARGET_MK
-        
-        # Отключаем аппаратную карту светодиодов встроенного коммутатора MT7620
-        # Значение 0 полностью выключает внутренний контроллер диодов свитча на портах
-        echo "BOARD_EPHY_LED_MODE=0" >> $TARGET_MK
+        # Полностью отдаем пины свитча под программный GPIO и гасим железный контроллер
+        echo "BOARD_EPHY_GPIO_EN=y" >> $TARGET_MK
+        echo "BOARD_EPHY_LED_MODE=15" >> $TARGET_MK
+
 
         echo "=== Сборка ==="
         ./clear_tree.sh
