@@ -71,9 +71,9 @@ jobs:
         echo "=== Настройка GPIO для Kimax ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
         
-        # Отвязываем LAN_LED от зависающей автоматики ядра (ставим пустышку)
-        sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          99/' $TARGET_H
-        sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      0/' $TARGET_H
+        # Возвращаем пин 44 штатному драйверу светодиодов Padavan
+        sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          44/' $TARGET_H
+        sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      1/' $TARGET_H
         
         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
@@ -84,18 +84,15 @@ jobs:
         echo "BOARD_EPHY_GPIO_EN=y" >> $TARGET_MK
         echo "BOARD_EPHY_LED_MODE=15" >> $TARGET_MK
 
-        echo "=== Программный триггер через mtk_gpio ==="
-        LINK_SCRIPT="padavan-ng/trunk/user/scripts/link-status"
-        if [ -f "$LINK_SCRIPT" ]; then
-          # На всякий случай переводим пин 44 в режим вывода (OUT) при каждом событии линка
-          echo "mtk_gpio -d 44 1 2>/dev/null" >> $LINK_SCRIPT
-          # Если линк поднялся (up) — подаем сигнал, иначе гасим. 
-          # (Если логика инвертирована, мы просто поменяем ниже 1 и 0 местами)
-          echo '[ "$1" = "up" ] && mtk_gpio -w 44 1 2>/dev/null || mtk_gpio -w 44 0 2>/dev/null' >> $LINK_SCRIPT
+        echo "=== Хак pinctrl (Освобождение пина 44 из регистров MTK) ==="
+        # Патчим инициализацию процессора, переключая регистр GPIO_MODE (NAND_SHARE) в режим GPIO
+        RALINK_CORE="padavan-ng/trunk/kernel-3.4.x/arch/mips/ralink/rt2880/mips.c"
+        if [ -f "$RALINK_CORE" ]; then
+          # Находим функцию инициализации и принудительно конфигурируем регистр мультиплексирования пинов MT7620
+          # Мы программно переводим линии EPHY_LED / NAND в режим чистых GPIO
+          sed -i '/void __init ralink_clk_init/i #define MT7620_REG_GPIOMODE 0x60\n#define sysreg_w32(v, o) \*(volatile u32 *)(0xb0000000 + (o)) = (v)' $RALINK_CORE
+          sed -i '/ralink_clk_init/a \    sysreg_w32((*(volatile u32 *)0xb0000060) & ~(0x3 << 18), 0x60);' $RALINK_CORE
         fi
-
-
-
 
 
         echo "=== Сборка ==="
