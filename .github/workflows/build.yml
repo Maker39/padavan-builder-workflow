@@ -70,24 +70,33 @@ jobs:
 
         echo "=== Настройка GPIO для Kimax ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
-        sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          44/' $TARGET_H
+        
+        # Отвязываем LAN_LED от автоматики ядра (ставим несуществующий пин, чтобы ядро его не блокировало)
+        sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          99/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      0/' $TARGET_H
+        
         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
 
-        echo "=== Настройка свитча и освобождение пина 44 ==="
+        echo "=== Настройка свитча ==="
         sed -i 's/BOARD_SINGLE_EPHY.*/BOARD_SINGLE_EPHY=y/g' $TARGET_MK
         sed -i 's/BOARD_EPHY_PORT_5.*/BOARD_EPHY_PORT_5=n/g' $TARGET_MK
         echo "BOARD_EPHY_GPIO_EN=y" >> $TARGET_MK
         echo "BOARD_EPHY_LED_MODE=15" >> $TARGET_MK
 
-        # Хак ядра: принудительно отключаем аппаратный контроллер LED в драйвере свитча MT7620
-        SWITCH_SRC="padavan-ng/trunk/libs/libonchip/switch_7620.c"
-        if [ -f "$SWITCH_SRC" ]; then
-          echo "=== Применение хака для switch_7620.c ==="
-          # Находим место инициализации и принудительно пишем отключение светодиодов в регистр
-          sed -i '/switch_init_led/a \    IOWRITE(0x44, 0xFFFF);' $SWITCH_SRC
+        echo "=== Программный триггер для светодиода (Пин 44) ==="
+        # Прописываем включение и инициализацию пина 44 в стартовый скрипт роутера
+        START_SCRIPT="padavan-ng/trunk/user/shared/defaults.h"
+        # Создаем скрипт, который применится при первой загрузке роутера в rc.local / скрипты линка
+        # Настраиваем автоматическое управление пином 44 через скрипт линка в самой прошивке
+        LINK_SCRIPT="padavan-ng/trunk/user/scripts/link-status"
+        if [ -f "$LINK_SCRIPT" ]; then
+          # При поднятии линка гасим/включаем пин вручную через встроенный API или напрямую через регистры mtk_gpio
+          echo "echo 44 > /sys/class/gpio/export 2>/dev/null" >> $LINK_SCRIPT
+          echo "echo out > /sys/class/gpio/gpio44/direction 2>/dev/null" >> $LINK_SCRIPT
+          echo '[ "$1" = "up" ] && echo 1 > /sys/class/gpio/gpio44/value || echo 0 > /sys/class/gpio/gpio44/value' >> $LINK_SCRIPT
         fi
+
 
 
 
