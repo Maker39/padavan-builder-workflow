@@ -75,12 +75,20 @@ jobs:
         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
 
-
-        echo "=== Настройка свитча и освобождение пинов ==="
+        echo "=== Настройка свитча и освобождение пина 44 ==="
         sed -i 's/BOARD_SINGLE_EPHY.*/BOARD_SINGLE_EPHY=y/g' $TARGET_MK
         sed -i 's/BOARD_EPHY_PORT_5.*/BOARD_EPHY_PORT_5=n/g' $TARGET_MK
         echo "BOARD_EPHY_GPIO_EN=y" >> $TARGET_MK
         echo "BOARD_EPHY_LED_MODE=15" >> $TARGET_MK
+
+        # Хак ядра: принудительно отключаем аппаратный контроллер LED в драйвере свитча MT7620
+        SWITCH_SRC="padavan-ng/trunk/libs/libonchip/switch_7620.c"
+        if [ -f "$SWITCH_SRC" ]; then
+          echo "=== Применение хака для switch_7620.c ==="
+          # Находим место инициализации и принудительно пишем отключение светодиодов в регистр
+          sed -i '/switch_init_led/a \    IOWRITE(0x44, 0xFFFF);' $SWITCH_SRC
+        fi
+
 
 
         echo "=== Сборка ==="
