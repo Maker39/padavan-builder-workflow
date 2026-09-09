@@ -70,11 +70,11 @@ jobs:
 
         echo "=== Настройка GPIO для Kimax ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
-        # Пробуем альтернативный пин 43 с прямой логикой (INV=0):
-        sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          43/' $TARGET_H
-        sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      0/' $TARGET_H
+        sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          44/' $TARGET_H
+        sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      1/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
+
 
         echo "=== Настройка свитча и освобождение пинов ==="
         sed -i 's/BOARD_SINGLE_EPHY.*/BOARD_SINGLE_EPHY=y/g' $TARGET_MK
