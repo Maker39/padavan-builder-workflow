@@ -71,7 +71,7 @@ jobs:
         echo "=== Настройка GPIO для Kimax ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
         
-        # Отвязываем LAN_LED от автоматики ядра (ставим несуществующий пин, чтобы ядро его не блокировало)
+        # Отвязываем LAN_LED от зависающей автоматики ядра (ставим пустышку)
         sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          99/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      0/' $TARGET_H
         
@@ -84,18 +84,16 @@ jobs:
         echo "BOARD_EPHY_GPIO_EN=y" >> $TARGET_MK
         echo "BOARD_EPHY_LED_MODE=15" >> $TARGET_MK
 
-        echo "=== Программный триггер для светодиода (Пин 44) ==="
-        # Прописываем включение и инициализацию пина 44 в стартовый скрипт роутера
-        START_SCRIPT="padavan-ng/trunk/user/shared/defaults.h"
-        # Создаем скрипт, который применится при первой загрузке роутера в rc.local / скрипты линка
-        # Настраиваем автоматическое управление пином 44 через скрипт линка в самой прошивке
+        echo "=== Программный триггер через mtk_gpio ==="
         LINK_SCRIPT="padavan-ng/trunk/user/scripts/link-status"
         if [ -f "$LINK_SCRIPT" ]; then
-          # При поднятии линка гасим/включаем пин вручную через встроенный API или напрямую через регистры mtk_gpio
-          echo "echo 44 > /sys/class/gpio/export 2>/dev/null" >> $LINK_SCRIPT
-          echo "echo out > /sys/class/gpio/gpio44/direction 2>/dev/null" >> $LINK_SCRIPT
-          echo '[ "$1" = "up" ] && echo 1 > /sys/class/gpio/gpio44/value || echo 0 > /sys/class/gpio/gpio44/value' >> $LINK_SCRIPT
+          # На всякий случай переводим пин 44 в режим вывода (OUT) при каждом событии линка
+          echo "mtk_gpio -d 44 1 2>/dev/null" >> $LINK_SCRIPT
+          # Если линк поднялся (up) — подаем сигнал, иначе гасим. 
+          # (Если логика инвертирована, мы просто поменяем ниже 1 и 0 местами)
+          echo '[ "$1" = "up" ] && mtk_gpio -w 44 1 2>/dev/null || mtk_gpio -w 44 0 2>/dev/null' >> $LINK_SCRIPT
         fi
+
 
 
 
