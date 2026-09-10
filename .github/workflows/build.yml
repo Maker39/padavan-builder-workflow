@@ -49,74 +49,75 @@ jobs:
 # Включение автоопределения памяти (как в OpenWrt)
 # Мы модифицируем исходный код Kconfig и конфигурационные файлы платы WT3020H16M до сборки,
 # заставляя ядро Padavan доверять загрузчику Breed.
-            - name: Build firmware
-              run: |
-                sed -i 's/"//g' build.config
-                cp build.config padavan-ng/trunk/.config
-                cd padavan-ng/trunk
-      
-                BOARD_DIR="configs/boards/NEXX/WT3020H16M"
-                TARGET_H="$BOARD_DIR/board.h"
-                TARGET_MK="$BOARD_DIR/board.mk"
-      
-                echo "=== Настройка 128MB RAM ==="
-                sed -i 's/CONFIG_RALINK_RAM_SIZE=64/# CONFIG_RALINK_RAM_SIZE is not set/g' $BOARD_DIR/kernel-3.4.x.config
-                sed -i 's/CONFIG_RALINK_RAM_SIZE_FROM_BOOTLOADER=n/CONFIG_RALINK_RAM_SIZE_FROM_BOOTLOADER=y/g' $BOARD_DIR/kernel-3.4.x.config
-                sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n\nCONFIG_RT2880_DRAM_128M=y/g' $BOARD_DIR/kernel-3.4.x.config
-                sed -i 's/DRAM_64M/DRAM_128M/g' $TARGET_H
-                sed -i 's/RAM_SIZE=64/RAM_SIZE=128/g' $TARGET_MK
-      
-                echo "=== Настройка GPIO для Kimax ==="
-                sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
-                # Ставим пустышку 99 для LAN, чтобы ядро его гарантированно не зажигало аппаратно
-                sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          99/' $TARGET_H
-                sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      0/' $TARGET_H
-                sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
-                sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
-      
-                echo "=== Настройка свитча ==="
-                sed -i 's/BOARD_SINGLE_EPHY.*/BOARD_SINGLE_EPHY=y/g' $TARGET_MK
-                sed -i 's/BOARD_EPHY_PORT_5.*/BOARD_EPHY_PORT_5=n/g' $TARGET_MK
-                echo "BOARD_EPHY_GPIO_EN=y" >> $TARGET_MK
-                echo "BOARD_EPHY_LED_MODE=15" >> $TARGET_MK
-      
-                echo "=== Ювелирный хак pinctrl для MT7620A ==="
-                RALINK_CORE="kernel-3.4.x/arch/mips/ralink/rt2880/mips.c"
-                if [ -f "$RALINK_CORE" ]; then
-                  sed -i '/void __init ralink_clk_init/i #define sysreg_w32(v, o) \*(volatile u32 *)(0xb0000000 + (o)) = (v)\n#define sysreg_r32(o) \*(volatile u32 *)(0xb0000000 + (o))' $RALINK_CORE
-                  sed -i '/ralink_clk_init/a \    sysreg_w32(sysreg_r32(0x60) | (1 << 12), 0x60);' $RALINK_CORE
-                fi
-      
-                echo "=== Защита от сброса (Фикс однопортового режима) ==="
-                DEFAULTS_H="user/shared/defaults.h"
-                if [ -f "$DEFAULTS_H" ]; then
-                  sed -i 's/{ "rt_mode", "0" }/{ "rt_mode", "1" }/g' $DEFAULTS_H
-                fi
-      
-                echo "=== Фоновый демон управления светодиодом ==="
-                # Встраиваем бесконечный цикл опроса физического линка в дефолтный rc.local
-                # Он проверяет файл carrier (1 = кабель подключен, 0 = отключен) и дергает mtk_gpio
-                RC_LOCAL="user/scripts/rc.local"
-                if [ -f "$RC_LOCAL" ]; then
-                  cat << 'EOF' >> $RC_LOCAL
-      
-                # Фоновый контроль светодиода LAN (Пин 44)
-                (
-                  mtk_gpio -d 44 1 2>/dev/null
-                  while true; do
-                    # Проверяем интерфейс eth0 (или eth1, если они поменялись местами)
-                    IFACE="eth0"
-                    [ ! -d "/sys/class/net/$IFACE" ] && IFACE="eth1"
-                    
-                    if [ -f "/sys/class/net/$IFACE/carrier" ] && [ "$(cat /sys/class/net/$IFACE/carrier 2>/dev/null)" = "1" ]; then
-                      mtk_gpio -w 44 0 2>/dev/null # Зажечь (инверсный 0)
-                    else
-                      mtk_gpio -w 44 1 2>/dev/null # Погасить (инверсная 1)
-                    fi
-                    sleep 1
-                  done
-                ) &
-      EOF
+    - name: Build firmware
+      run: |
+        sed -i 's/"//g' build.config
+        cp build.config padavan-ng/trunk/.config
+        cd padavan-ng/trunk
+
+        BOARD_DIR="configs/boards/NEXX/WT3020H16M"
+        TARGET_H="$BOARD_DIR/board.h"
+        TARGET_MK="$BOARD_DIR/board.mk"
+
+        echo "=== Настройка 128MB RAM ==="
+        sed -i 's/CONFIG_RALINK_RAM_SIZE=64/# CONFIG_RALINK_RAM_SIZE is not set/g' $BOARD_DIR/kernel-3.4.x.config
+        sed -i 's/CONFIG_RALINK_RAM_SIZE_FROM_BOOTLOADER=n/CONFIG_RALINK_RAM_SIZE_FROM_BOOTLOADER=y/g' $BOARD_DIR/kernel-3.4.x.config
+        sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n\nCONFIG_RT2880_DRAM_128M=y/g' $BOARD_DIR/kernel-3.4.x.config
+        sed -i 's/DRAM_64M/DRAM_128M/g' $TARGET_H
+        sed -i 's/RAM_SIZE=64/RAM_SIZE=128/g' $TARGET_MK
+
+        echo "=== Настройка GPIO для Kimax ==="
+        sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
+        # Ставим пустышку 99 для LAN, чтобы ядро его гарантированно не зажигало аппаратно
+        sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          99/' $TARGET_H
+        sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      0/' $TARGET_H
+        sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
+        sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
+
+        echo "=== Настройка свитча ==="
+        sed -i 's/BOARD_SINGLE_EPHY.*/BOARD_SINGLE_EPHY=y/g' $TARGET_MK
+        sed -i 's/BOARD_EPHY_PORT_5.*/BOARD_EPHY_PORT_5=n/g' $TARGET_MK
+        echo "BOARD_EPHY_GPIO_EN=y" >> $TARGET_MK
+        echo "BOARD_EPHY_LED_MODE=15" >> $TARGET_MK
+
+        echo "=== Ювелирный хак pinctrl для MT7620A ==="
+        RALINK_CORE="kernel-3.4.x/arch/mips/ralink/rt2880/mips.c"
+        if [ -f "$RALINK_CORE" ]; then
+          sed -i '/void __init ralink_clk_init/i #define sysreg_w32(v, o) \*(volatile u32 *)(0xb0000000 + (o)) = (v)\n#define sysreg_r32(o) \*(volatile u32 *)(0xb0000000 + (o))' $RALINK_CORE
+          sed -i '/ralink_clk_init/a \    sysreg_w32(sysreg_r32(0x60) | (1 << 12), 0x60);' $RALINK_CORE
+        fi
+
+        echo "=== Защита от сброса (Фикс однопортового режима) ==="
+        DEFAULTS_H="user/shared/defaults.h"
+        if [ -f "$DEFAULTS_H" ]; then
+          sed -i 's/{ "rt_mode", "0" }/{ "rt_mode", "1" }/g' $DEFAULTS_H
+        fi
+
+        echo "=== Фоновый демон управления светодиодом ==="
+        # Встраиваем бесконечный цикл опроса физического линка в дефолтный rc.local
+        # Он проверяет файл carrier (1 = кабель подключен, 0 = отключен) и дергает mtk_gpio
+        RC_LOCAL="user/scripts/rc.local"
+        if [ -f "$RC_LOCAL" ]; then
+          cat << 'EOF' >> $RC_LOCAL
+
+        # Фоновый контроль светодиода LAN (Пин 44)
+        (
+          mtk_gpio -d 44 1 2>/dev/null
+          while true; do
+            # Проверяем интерфейс eth0 (или eth1, если они поменялись местами)
+            IFACE="eth0"
+            [ ! -d "/sys/class/net/$IFACE" ] && IFACE="eth1"
+            
+            if [ -f "/sys/class/net/$IFACE/carrier" ] && [ "$(cat /sys/class/net/$IFACE/carrier 2>/dev/null)" = "1" ]; then
+              mtk_gpio -w 44 0 2>/dev/null # Зажечь (инверсный 0)
+            else
+              mtk_gpio -w 44 1 2>/dev/null # Погасить (инверсная 1)
+            fi
+            sleep 1
+          done
+        ) &
+        
+        EOF
                 fi
       
                 echo "=== Сборка ==="
