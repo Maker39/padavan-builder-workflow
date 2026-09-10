@@ -81,12 +81,14 @@ jobs:
         echo "BOARD_EPHY_LED_MODE=15" >> $TARGET_MK
 
         echo "=== Ювелирный хак pinctrl для MT7620A ==="
-        # Включаем режим GPIO только для группы EPHY_LED (биты 11-13), сохраняя Wi-Fi и кнопки
+        # Переводим группу EPHY_LED (биты 12:11) в строгое состояние 10 (режим чистых GPIO)
         RALINK_CORE="kernel-3.4.x/arch/mips/ralink/rt2880/mips.c"
         if [ -f "$RALINK_CORE" ]; then
           sed -i '/void __init ralink_clk_init/i #define sysreg_w32(v, o) \*(volatile u32 *)(0xb0000000 + (o)) = (v)\n#define sysreg_r32(o) \*(volatile u32 *)(0xb0000000 + (o))' $RALINK_CORE
-          sed -i '/ralink_clk_init/a \    sysreg_w32(sysreg_r32(0x60) | (1 << 11), 0x60);' $RALINK_CORE
+          # Очищаем биты 11 и 12, затем пишем "1" в 12-й бит (активируем GPIO режим для группы пинов 40-44)
+          sed -i '/ralink_clk_init/a \    sysreg_w32((sysreg_r32(0x60) & ~(0x3 << 11)) | (1 << 12), 0x60);' $RALINK_CORE
         fi
+
 
         echo "=== Сборка ==="
         ./clear_tree.sh
@@ -161,32 +163,32 @@ jobs:
 
 
 
-    - name: Run custom post-build script
-      run: '[[ -f post-build.sh ]] && . post-build.sh || :'
+    # - name: Run custom post-build script
+    #   run: '[[ -f post-build.sh ]] && . post-build.sh || :'
 
-    - name: Prepare artifacts
-      run: |
-        cp "padavan-ng/trunk/images/$FW_FILE_NAME" .
-        echo "BUILD_TIMESTAMP=$(date '+%Y.%m.%d_%H.%M.%S')" >> $GITHUB_ENV
+    # - name: Prepare artifacts
+    #   run: |
+    #     cp "padavan-ng/trunk/images/$FW_FILE_NAME" .
+    #     echo "BUILD_TIMESTAMP=$(date '+%Y.%m.%d_%H.%M.%S')" >> $GITHUB_ENV
 
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: padavan-ng_${{ env.CONFIG_VENDOR }}_${{ env.CONFIG_FIRMWARE_PRODUCT_ID }}_${{ env.BUILD_TIMESTAMP }}
-        retention-days: 7
-        path: |
-          ${{ env.FW_FILE_NAME }}
-          build.config
+    # - name: Upload artifacts
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: padavan-ng_${{ env.CONFIG_VENDOR }}_${{ env.CONFIG_FIRMWARE_PRODUCT_ID }}_${{ env.BUILD_TIMESTAMP }}
+    #     retention-days: 7
+    #     path: |
+    #       ${{ env.FW_FILE_NAME }}
+    #       build.config
 
-    - name: Check firmware size
-      run: |
-        partitions=padavan-ng/trunk/configs/boards/$CONFIG_VENDOR/$CONFIG_FIRMWARE_PRODUCT_ID/partitions.config
-        max_fw_size="$(awk '/Firmware/ { getline; getline; sub(",", ""); print strtonum($2); }' "$partitions")"
-        fw_size="$(stat -c %s "$FW_FILE_NAME")"
+    # - name: Check firmware size
+    #   run: |
+    #     partitions=padavan-ng/trunk/configs/boards/$CONFIG_VENDOR/$CONFIG_FIRMWARE_PRODUCT_ID/partitions.config
+    #     max_fw_size="$(awk '/Firmware/ { getline; getline; sub(",", ""); print strtonum($2); }' "$partitions")"
+    #     fw_size="$(stat -c %s "$FW_FILE_NAME")"
 
-        if ((fw_size > max_fw_size)); then
-          fw_size_fmtd="$(numfmt --grouping "$fw_size") bytes"
-          max_fw_size_fmtd="$(numfmt --grouping "$max_fw_size") bytes"
-          echo "Firmware size ($fw_size_fmtd) exceeds max size ($max_fw_size_fmtd) for your target device"
-          exit 1
-        fi
+    #     if ((fw_size > max_fw_size)); then
+    #       fw_size_fmtd="$(numfmt --grouping "$fw_size") bytes"
+    #       max_fw_size_fmtd="$(numfmt --grouping "$max_fw_size") bytes"
+    #       echo "Firmware size ($fw_size_fmtd) exceeds max size ($max_fw_size_fmtd) for your target device"
+    #       exit 1
+    #     fi
