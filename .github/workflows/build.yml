@@ -66,36 +66,46 @@ jobs:
         sed -i 's/DRAM_64M/DRAM_128M/g' $TARGET_H
         sed -i 's/RAM_SIZE=64/RAM_SIZE=128/g' $TARGET_MK
 
-        echo "=== Настройка GPIO для Kimax ==="
-        sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
-        sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          44/' $TARGET_H
-        sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      1/' $TARGET_H
-        sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
-        sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
+          echo "=== Настройка GPIO для Kimax ==="
+          sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
+          
+          # Отвязываем LAN_LED от заснувшей автоматики ядра (ставим пустышку 99)
+          sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          99/' $TARGET_H
+          sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      0/' $TARGET_H
+          
+          sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
+          sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
 
-        # Убираем отсюда BOARD_NUM_ETH_PORTS, чтобы httpd успешно скомпилировался
+          # Безопасное переопределение для режима Точки Доступа
+          sed -i 's/#define BOARD_NUM_ANT_5G.*/#define BOARD_NUM_ANT_5G            0/' $TARGET_H
 
-        echo "=== Настройка свитча ==="
-        sed -i 's/BOARD_SINGLE_EPHY.*/BOARD_SINGLE_EPHY=y/g' $TARGET_MK
-        sed -i 's/BOARD_EPHY_PORT_5.*/BOARD_EPHY_PORT_5=n/g' $TARGET_MK
-        echo "BOARD_EPHY_GPIO_EN=y" >> $TARGET_MK
-        echo "BOARD_EPHY_LED_MODE=15" >> $TARGET_MK
+          echo "=== Настройка свитча ==="
+          sed -i 's/BOARD_SINGLE_EPHY.*/BOARD_SINGLE_EPHY=y/g' $TARGET_MK
+          sed -i 's/BOARD_EPHY_PORT_5.*/BOARD_EPHY_PORT_5=n/g' $TARGET_MK
+          echo "BOARD_EPHY_GPIO_EN=y" >> $TARGET_MK
+          echo "BOARD_EPHY_LED_MODE=15" >> $TARGET_MK
 
-        echo "=== Ювелирный хак pinctrl для MT7620A ==="
-        RALINK_CORE="kernel-3.4.x/arch/mips/ralink/rt2880/mips.c"
-        if [ -f "$RALINK_CORE" ]; then
-          sed -i '/void __init ralink_clk_init/i #define sysreg_w32(v, o) \*(volatile u32 *)(0xb0000000 + (o)) = (v)\n#define sysreg_r32(o) \*(volatile u32 *)(0xb0000000 + (o))' $RALINK_CORE
-          sed -i '/ralink_clk_init/a \    sysreg_w32(sysreg_r32(0x60) | (1 << 12), 0x60);' $RALINK_CORE
-        fi
+          echo "=== Ювелирный хак pinctrl для MT7620A ==="
+          RALINK_CORE="kernel-3.4.x/arch/mips/ralink/rt2880/mips.c"
+          if [ -f "$RALINK_CORE" ]; then
+            sed -i '/void __init ralink_clk_init/i #define sysreg_w32(v, o) \*(volatile u32 *)(0xb0000000 + (o)) = (v)\n#define sysreg_r32(o) \*(volatile u32 *)(0xb0000000 + (o))' $RALINK_CORE
+            sed -i '/ralink_clk_init/a \    sysreg_w32(sysreg_r32(0x60) | (1 << 12), 0x60);' $RALINK_CORE
+          fi
 
-        echo "=== Защита от сброса (Фикс однопортового режима) ==="
-        # Прописываем автоматическое отключение изоляции портов при первой загрузке (rc.local)
-        DEFAULTS_H="user/shared/defaults.h"
-        if [ -f "$DEFAULTS_H" ]; then
-          # Меняем дефолтный режим работы роутера с "Router" (0) на "Access Point" (1).
-          # В режиме AP все виртуальные VLAN отключаются, встроенный свитч объединяет Wi-Fi и единственный Ethernet порт в один прозрачный мост, что защитит от окирпичивания при сбросе.
-          sed -i 's/{ "rt_mode", "0" }/{ "rt_mode", "1" }/g' $DEFAULTS_H
-        fi
+          echo "=== Защита от сброса (Фикс однопортового режима) ==="
+          DEFAULTS_H="user/shared/defaults.h"
+          if [ -f "$DEFAULTS_H" ]; then
+            sed -i 's/{ "rt_mode", "0" }/{ "rt_mode", "1" }/g' $DEFAULTS_H
+          fi
+
+          echo "=== Программное управление светодиодом через mtk_gpio ==="
+          LINK_SCRIPT="user/scripts/link-status"
+          if [ -f "$LINK_SCRIPT" ]; then
+            # Переводим пин 44 в режим вывода (OUT) при каждом событии
+            echo "mtk_gpio -d 44 1 2>/dev/null" >> $LINK_SCRIPT
+            # Если линк поднялся (up) — включаем светодиод (подаем 0, так как логика платы инверсная), иначе выключаем (1)
+            echo '[ "$1" = "up" ] && mtk_gpio -w 44 0 2>/dev/null || mtk_gpio -w 44 1 2>/dev/null' >> $LINK_SCRIPT
+          fi
 
 
 
