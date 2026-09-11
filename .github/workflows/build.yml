@@ -93,26 +93,27 @@ jobs:
           sed -i 's/{ "rt_mode", "0" }/{ "rt_mode", "1" }/g' $DEFAULTS_H
         fi
 
-        echo "=== Фоновый демон управления светодиодом ==="
-        RC_LOCAL="user/scripts/rc.local"
-        if [ -f "$RC_LOCAL" ]; then
-          # Настройка пина 44 на вывод
-          echo "mtk_gpio -d 44 1 2>/dev/null" >> $RC_LOCAL
-          
-          # Цикл опрашивает mii-tool. Если в выводе есть "link ok" — зажигаем светодиод (0), иначе гасим (1)
-          cat << 'EOF' >> $RC_LOCAL
-        (
-          while true; do
-            if mii-tool eth0 2>/dev/null | grep -q "link ok" || mii-tool eth1 2>/dev/null | grep -q "link ok"; then
-              mtk_gpio -w 44 0 2>/dev/null
-            else
-              mtk_gpio -w 44 1 2>/dev/null
-            fi
-            sleep 2
-          done
-        ) &
+          echo "=== Фоновый демон управления светодиодом ==="
+          RC_LOCAL="user/scripts/rc.local"
+          if [ -f "$RC_LOCAL" ]; then
+            # Настройка пина 44 на вывод
+            echo "mtk_gpio -d 44 1 2>/dev/null" >> $RC_LOCAL
+            
+            # Наполняем rc.local. ВАЖНО: EOF должен быть строго в начале строки!
+            cat << 'EOF' >> $RC_LOCAL
+(
+  while true; do
+    if mii-tool eth0 2>/dev/null | grep -q "link ok" || mii-tool eth1 2>/dev/null | grep -q "link ok"; then
+      mtk_gpio -w 44 0 2>/dev/null
+    else
+      mtk_gpio -w 44 1 2>/dev/null
+    fi
+    sleep 2
+  done
+) &
 EOF
-        fi
+          fi
+
 
       
         echo "=== Сборка ==="
