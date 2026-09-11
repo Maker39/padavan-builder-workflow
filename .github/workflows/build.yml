@@ -99,20 +99,10 @@ jobs:
             # Настройка пина 44 на вывод
             echo "mtk_gpio -d 44 1 2>/dev/null" >> $RC_LOCAL
             
-            # Наполняем rc.local. ВАЖНО: EOF должен быть строго в начале строки!
-            cat << 'EOF' >> $RC_LOCAL
-(
-  while true; do
-    if mii-tool eth0 2>/dev/null | grep -q "link ok" || mii-tool eth1 2>/dev/null | grep -q "link ok"; then
-      mtk_gpio -w 44 0 2>/dev/null
-    else
-      mtk_gpio -w 44 1 2>/dev/null
-    fi
-    sleep 2
-  done
-) &
-EOF
+            # Безопасно пишем многострочный цикл в rc.local с помощью echo
+            echo -e "(\n  while true; do\n    if mii-tool eth0 2>/dev/null | grep -q \"link ok\" || mii-tool eth1 2>/dev/null | grep -q \"link ok\"; then\n      mtk_gpio -w 44 0 2>/dev/null\n    else\n      mtk_gpio -w 44 1 2>/dev/null\n    fi\n    sleep 2\n  done\n) &" >> $RC_LOCAL
           fi
+
 
 
       
