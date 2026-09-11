@@ -100,14 +100,14 @@ jobs:
           cat << 'EOF' >> $RC_LOCAL
   
 
-          echo "=== Фоновый демон управления светодиодом ==="
-          RC_LOCAL="user/scripts/rc.local"
-          if [ -f "$RC_LOCAL" ]; then
-            # Очищаем блок, если там что-то было, и пишем надежный запуск в одну строку
-            echo "mtk_gpio -d 44 1 2>/dev/null" >> $RC_LOCAL
-            # Запускаем цикл в фоне напрямую из rc.local без создания промежуточных файлов
-            echo '( while true; do IF="eth0"; [ ! -d "/sys/class/net/\$IF" ] && IF="eth1"; [ -f "/sys/class/net/\$IF/carrier" ] && [ "\$(cat /sys/class/net/\$IF/carrier 2>/dev/null)" = "1" ] && mtk_gpio -w 44 0 2>/dev/null || mtk_gpio -w 44 1 2>/dev/null; sleep 2; done ) &' >> $RC_LOCAL
-          fi
+        echo "=== Фоновый демон управления светодиодом ==="
+        RC_LOCAL="user/scripts/rc.local"
+        if [ -f "$RC_LOCAL" ]; then
+          # Очищаем блок, если там что-то было, и пишем надежный запуск в одну строку
+          echo "mtk_gpio -d 44 1 2>/dev/null" >> $RC_LOCAL
+          # Запускаем цикл в фоне напрямую из rc.local без создания промежуточных файлов
+          echo '( while true; do IF="eth0"; [ ! -d "/sys/class/net/\$IF" ] && IF="eth1"; [ -f "/sys/class/net/\$IF/carrier" ] && [ "\$(cat /sys/class/net/\$IF/carrier 2>/dev/null)" = "1" ] && mtk_gpio -w 44 0 2>/dev/null || mtk_gpio -w 44 1 2>/dev/null; sleep 2; done ) &' >> $RC_LOCAL
+        fi
 
 
       
