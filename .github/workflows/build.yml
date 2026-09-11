@@ -93,32 +93,33 @@ jobs:
           sed -i 's/{ "rt_mode", "0" }/{ "rt_mode", "1" }/g' $DEFAULTS_H
         fi
 
-        echo "=== Фоновый демон управления светодиодом ==="
-        RC_LOCAL="user/scripts/rc.local"
-        if [ -f "$RC_LOCAL" ]; then
-          # Создаем изолированный независимый скрипт в оперативной памяти роутера при загрузке
-          cat << 'EOF' >> $RC_LOCAL
+          echo "=== Фоновый демон управления светодиодом ==="
+          RC_LOCAL="user/scripts/rc.local"
+          if [ -f "$RC_LOCAL" ]; then
+            # Создаем изолированный независимый скрипт в оперативной памяти роутера при загрузке
+            cat << 'EOF' >> $RC_LOCAL
 
-        # Пишем скрипт во временный файл и запускаем его в глубоком фоне, освобождая rc.local
-        cat << 'INNER' > /tmp/lan_led_monitor.sh
-        #!/bin/sh
-        mtk_gpio -d 44 1 2>/dev/null
-        while true; do
-          IFACE="eth0"
-          [ ! -d "/sys/class/net/$IFACE" ] && IFACE="eth1"
-          if [ -f "/sys/class/net/$IFACE/carrier" ] && [ "$(cat /sys/class/net/$IFACE/carrier 2>/dev/null)" = "1" ]; then
-            mtk_gpio -w 44 0 2>/dev/null
-          else
-            mtk_gpio -w 44 1 2>/dev/null
-          fi
-          sleep 2
-        done
-        INNER
-        chmod +x /tmp/lan_led_monitor.sh
-        # Запуск без блокировки основного потока инициализации Padavan
-        /tmp/lan_led_monitor.sh >/dev/null 2>&1 &
+          # Пишем скрипт во временный файл и запускаем его в глубоком фоне, освобождая rc.local
+          cat << 'INNER' > /tmp/lan_led_monitor.sh
+          #!/bin/sh
+          mtk_gpio -d 44 1 2>/dev/null
+          while true; do
+            IFACE="eth0"
+            [ ! -d "/sys/class/net/$IFACE" ] && IFACE="eth1"
+            if [ -f "/sys/class/net/$IFACE/carrier" ] && [ "$(cat /sys/class/net/$IFACE/carrier 2>/dev/null)" = "1" ]; then
+              mtk_gpio -w 44 0 2>/dev/null
+            else
+              mtk_gpio -w 44 1 2>/dev/null
+            fi
+            sleep 2
+          done
+          INNER
+          chmod +x /tmp/lan_led_monitor.sh
+          # Запуск без блокировки основного потока инициализации Padavan
+          /tmp/lan_led_monitor.sh >/dev/null 2>&1 &
 EOF
-        fi
+          fi
+
 
       
 echo "=== Сборка ==="
