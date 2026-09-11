@@ -68,8 +68,9 @@ jobs:
 
         echo "=== Настройка GPIO для Kimax ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
-        sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          99/' $TARGET_H
-        sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      0/' $TARGET_H
+        # Возвращаем пин 44 под полный контроль автоматики ядра
+        sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          44/' $TARGET_H
+        sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      1/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
 
@@ -92,22 +93,14 @@ jobs:
           sed -i 's/{ "rt_mode", "0" }/{ "rt_mode", "1" }/g' $DEFAULTS_H
         fi
 
-        echo "=== Фоновый демон управления светодиодом ==="
-        RC_LOCAL="user/scripts/rc.local"
-        if [ -f "$RC_LOCAL" ]; then
-          echo "mtk_gpio -d 44 1 2>/dev/null" >> $RC_LOCAL
-          
-          # Пишем логику построчно в файл через стандартный синтаксис bash без кавычек
-          echo "(" >> $RC_LOCAL
-          echo "  while true; do" >> $RC_LOCAL
-          echo "    if mii-tool eth0 2>/dev/null | grep -q \"link ok\" || mii-tool eth1 2>/dev/null | grep -q \"link ok\"; then" >> $RC_LOCAL
-          echo "      mtk_gpio -w 44 0 2>/dev/null" >> $RC_LOCAL
-          echo "    else" >> $RC_LOCAL
-          echo "      mtk_gpio -w 44 1 2>/dev/null" >> $RC_LOCAL
-          echo "    fi" >> $RC_LOCAL
-          echo "    sleep 2" >> $RC_LOCAL
-          echo "  done" >> $RC_LOCAL
-          echo ") &" >> $RC_LOCAL
+        echo "=== Хак инверсии драйвера сетевой карты ==="
+        # Переворачиваем логику On/Off для LAN светодиода прямо в коде сетевого драйвера MediaTek,
+        # чтобы исправить инверсию физической платы Kimax раз и навсегда!
+        NET_DRV="kernel-3.4.x/drivers/net/raeth/raether_main.c"
+        if [ -f "$NET_DRV" ]; then
+          # Находим функции зажигания и тушения светодиода LAN и полярность меняем местами
+          sed -i 's/mtk_gpio_w_lan_led(1)/mtk_gpio_w_lan_led(0)/g' $NET_DRV 2>/dev/null
+          sed -i 's/mtk_gpio_w_lan_led(0)/mtk_gpio_w_lan_led(1)/g' $NET_DRV 2>/dev/null
         fi
 
         echo "=== Сборка ==="
@@ -117,6 +110,7 @@ jobs:
         FW_FILE_NAME="$(find images -type f -regextype posix-extended -iregex ".*\.(trx|bin)$" -printf "%T@\t%f\n" | sort -V | tail -1 | cut -f2)"
         [[ -n $FW_FILE_NAME ]] || { echo "Firmware file not found"; exit 1; }
         echo "FW_FILE_NAME=$FW_FILE_NAME" >> $GITHUB_ENV
+
 
 
 
