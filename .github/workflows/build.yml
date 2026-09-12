@@ -134,7 +134,7 @@ jobs:
             sed -i '/switch (led_wifi_mode)/i \
             #ifdef BOARD_GPIO_LED_DISK\n    switch (led_disk_mode) {\n        case 0:\n            led_control(BOARD_GPIO_LED_DISK, LED_OFF);\n            break;\n        case 1:\n            set_led_trigger(BOARD_GPIO_LED_DISK, "disk-activity");\n            break;\n        case 2:\n            led_control(BOARD_GPIO_LED_DISK, LED_ON);\n            break;\n    }\n    #endif\n' "$SERVICES_C_PATH"
         fi
-EOF
+        EOF
 
         echo "=== Сборка ==="
         ./clear_tree.sh
