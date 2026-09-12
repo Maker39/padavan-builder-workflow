@@ -73,13 +73,15 @@ jobs:
         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
 
-        echo "=== Настройка свитча (Аппаратная инверсия полярности) ==="
+        echo "=== Настройка свитча и программного LED ==="
         sed -i 's/BOARD_SINGLE_EPHY.*/BOARD_SINGLE_EPHY=y/g' $TARGET_MK
         sed -i 's/BOARD_EPHY_PORT_5.*/BOARD_EPHY_PORT_5=n/g' $TARGET_MK
         sed -i 's/BOARD_EPHY_GPIO_EN.*/BOARD_EPHY_GPIO_EN=n/g' $TARGET_MK
-        # Режим 4 (0x4) заставляет коммутатор MT7620A аппаратно перевернуть полярность 
-        # светодиода под инверсную схему Kimax, обеспечивая мгновенный отклик на кабель
-        echo "BOARD_EPHY_LED_MODE=4" >> $TARGET_MK
+        # Отключаем аппаратный режим свитча (ставим 0), чтобы вернуть пин 44 под контроль ОС
+        sed -i 's/BOARD_EPHY_LED_MODE.*/BOARD_EPHY_LED_MODE=0/g' $TARGET_MK
+        # Включаем программный триггер для порта LAN
+        echo "BOARD_MANUAL_LED_LAN_PORT=0" >> $TARGET_MK
+
 
         echo "=== Защита от сброса (Фикс однопортового режима) ==="
         DEFAULTS_H="user/shared/defaults.h"
