@@ -124,11 +124,11 @@ jobs:
             # Мы пишем нативный JS, который найдет таблицу настроек светодиодов 
             # и создаст новую строчку TR с селектором, полностью сохранив логику NVRAM.
             cat << 'JS_EOF' >> "$WEB_ASP_PATH"
-<script type="text/javascript">
-window.addEventListener('DOMContentLoaded', function() {
-    // Находим первый выпадающий селектор светодиодов на странице (обычно это Power или WiFi LED)
-    var baseSelect = document.querySelector('select[name="led_wifi_mode"]') || document.querySelector('select[name="led_power_mode"]');
-    if (baseSelect) {
+        <script type="text/javascript">
+        window.addEventListener('DOMContentLoaded', function() {
+        // Находим первый выпадающий селектор светодиодов на странице (обычно это Power или WiFi LED)
+        var baseSelect = document.querySelector('select[name="led_wifi_mode"]') || document.querySelector('select[name="led_power_mode"]');
+        if (baseSelect) {
         // Находим родительскую строку таблицы (TR)
         var baseRow = baseSelect.closest('tr');
         if (baseRow) {
@@ -153,11 +153,11 @@ window.addEventListener('DOMContentLoaded', function() {
             // Вставляем новую строку сразу после строки WiFi/Power LED
             baseRow.parentNode.insertBefore(newRow, baseRow.nextSibling);
             console.log("HDD LED Успешно интегрирован в WebUI");
-        }
-    }
-});
-</script>
-JS_EOF
+                }
+            }
+        });
+        </script>
+        JS_EOF
         fi
 
         # 3. Патчим логику управления триггерами в services.c
@@ -169,7 +169,7 @@ JS_EOF
             sed -i '/switch (led_wifi_mode)/i \
             #ifdef BOARD_GPIO_LED_DISK\n    switch (led_disk_mode) {\n        case 0:\n            led_control(BOARD_GPIO_LED_DISK, LED_OFF);\n            break;\n        case 1:\n            set_led_trigger(BOARD_GPIO_LED_DISK, "disk-activity");\n            break;\n        case 2:\n            led_control(BOARD_GPIO_LED_DISK, LED_ON);\n            break;\n    }\n    #endif\n' "$SERVICES_C_PATH"
         fi
-EOF
+        EOF
 
 
 
