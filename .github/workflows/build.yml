@@ -92,10 +92,19 @@ jobs:
         DEFAULTS_H="user/shared/defaults.h"
         if [ -f "$DEFAULTS_H" ]; then
           sed -i 's/{ "rt_mode", "0" }/{ "rt_mode", "1" }/g' $DEFAULTS_H
-          # ХАК: Жестко прописываем триггер netdev для LAN светодиода на интерфейс eth2
-          # Теперь само ядро Linux будет управлять зажиганием пина 44 при наличии физического линка
-          sed -i 's/{ "lan_led_act", ".*" }/{ "lan_led_act", "1" }/g' $DEFAULTS_H
-          echo '{ "lan_led_iface", "eth2" },' >> $DEFAULTS_H
+        fi
+
+        echo "=== Активация триггера netdev для LAN LED ==="
+        RC_LOCAL="user/scripts/rc.local"
+        if [ -f "$RC_LOCAL" ]; then
+          # Записываем настройки светодиода напрямую в NVRAM при загрузке.
+          # Назначаем интерфейс eth2 (наша карта) и включаем триггер активности (1)
+          echo "nvram set lan_led_iface=eth2" >> $RC_LOCAL
+          echo "nvram set lan_led_act=1" >> $RC_LOCAL
+          # Сразу применяем настройки к системному светодиоду через внутренний триггер ядра
+          echo "echo netdev > /sys/class/leds/lan/trigger 2>/dev/null" >> $RC_LOCAL
+          echo "echo eth2 > /sys/class/leds/lan/device_name 2>/dev/null" >> $RC_LOCAL
+          echo "echo 1 > /sys/class/leds/lan/link 2>/dev/null" >> $RC_LOCAL
         fi
 
         echo "=== Сборка ==="
