@@ -77,12 +77,18 @@ jobs:
         sed -i 's/#define BOARD_GPIO_LED_WIFI_INV.*/#define BOARD_GPIO_LED_WIFI_INV     0/' $TARGET_H
         
         # Назначаем физический пин 44 главным системным индикатором питания.
-        # Инверсия (1) обеспечивает правильное ровное горение светодиода после загрузки!
         sed -i 's/#define BOARD_GPIO_LED_POWER.*/#define BOARD_GPIO_LED_POWER        44/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_LED_POWER_INV.*/#define BOARD_GPIO_LED_POWER_INV    1/' $TARGET_H
         
         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
+
+        echo "=== Добавление аппаратной конфигурации HDD LED (GPIO15) ==="
+        # Удаляем старые дефайны, если они были, и прописываем GPIO 15 с инверсией
+        sed -i '/#define BOARD_GPIO_LED_DISK/d' $TARGET_H
+        sed -i '/#define BOARD_GPIO_LED_DISK_INV/d' $TARGET_H
+        echo "#define BOARD_GPIO_LED_DISK        15" >> $TARGET_H
+        echo "#define BOARD_GPIO_LED_DISK_INV    1" >> $TARGET_H
 
         echo "=== Настройка свитча ==="
         sed -i 's/BOARD_SINGLE_EPHY.*/BOARD_SINGLE_EPHY=y/g' $TARGET_MK
@@ -96,13 +102,31 @@ jobs:
           sed -i 's/{ "rt_mode", "0" }/{ "rt_mode", "1" }/g' $DEFAULTS_H
         fi
 
+        echo "=== Интеграция HDD LED в WebUI и Бэкенд NVRAM ==="
+        # 1. Прописываем дефолтное значение переменной (1 = Авто/активность) в httpd/defaults.c
+        sed -i '/{ "led_wifi_mode",/a \ \ \ \ { "led_disk_mode", "1" },' user/httpd/defaults.c
+
+        # 2. Рендерим блок выбора режима светодиода HDD в меню Кнопки/LED (Advanced_Buttons_Content.asp)
+        # Вставляем блок новой строки TR сразу после строки выбора led_wifi_mode
+        sed -i '/name="led_wifi_mode"/{n;n;n;n;a \
+        <tr>\n    <th>HDD LED Mode<\/th>\n    <td>\n        <select name="led_disk_mode" class="input" onChange="applyRule();">\n            <option value="0" <% nvram_match_x("", "led_disk_mode", "0", "selected"); %>>Выключен<\/option>\n            <option value="1" <% nvram_match_x("", "led_disk_mode", "1", "selected"); %>>Активность HDD/USB (Авто)<\/option>\n            <option value="2" <% nvram_match_x("", "led_disk_mode", "2", "selected"); %>>Всегда включен<\/option>\n        <\/select>\n    <\/td>\n<\/tr>
+        }' user/www/Advanced_Buttons_Content.asp
+
+        # 3. Добавляем считывание переменной и обработку логики триггеров в rc/services.c
+        sed -i '/int led_wifi_mode =/a \ \ \ \ int led_disk_mode = nvram_get_int("led_disk_mode");' user/rc/services.c
+        
+        # Встраиваем обработку switch(led_disk_mode) прямо перед обработкой wifi_mode в коде
+        sed -i '/switch (led_wifi_mode)/i \
+        #ifdef BOARD_GPIO_LED_DISK\n    switch (led_disk_mode) {\n        case 0:\n            led_control(BOARD_GPIO_LED_DISK, LED_OFF);\n            break;\n        case 1:\n            set_led_trigger(BOARD_GPIO_LED_DISK, "disk-activity");\n            break;\n        case 2:\n            led_control(BOARD_GPIO_LED_DISK, LED_ON);\n            break;\n    }\n    #endif\n' user/rc/services.c
+
         echo "=== Сборка ==="
         ./clear_tree.sh
         ./build_firmware.sh
 
         FW_FILE_NAME="$(find images -type f -regextype posix-extended -iregex ".*\.(trx|bin)$" -printf "%T@\t%f\n" | sort -V | tail -1 | cut -f2)"
         [[ -n $FW_FILE_NAME ]] || { echo "Firmware file not found"; exit 1; }
-        echo "FW_FILE_NAME=$FW_FILE_NAME" >> $GITHUB_ENV 
+        echo "FW_FILE_NAME=$FW_FILE_NAME" >> $GITHUB_ENV
+
         
 #  еще вариант предложенный AI (нужно проверять)  
 # Мы внедрим наши sed-команды прямо внутрь официального скрипта автоматизации trunk/user/scripts/custom_script.sh. 
