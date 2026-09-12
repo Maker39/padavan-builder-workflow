@@ -50,6 +50,7 @@ jobs:
 # Мы модифицируем исходный код Kconfig и конфигурационные файлы платы WT3020H16M до сборки,
 # заставляя ядро Padavan доверять загрузчику Breed.
 
+
     - name: Build firmware
       run: |
         sed -i 's/"//g' build.config
@@ -69,33 +70,33 @@ jobs:
 
         echo "=== Настройка GPIO для Kimax ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
-        # Возвращаем пин 44 автоматике ядра (или свитча) в board.h
         sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          44/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      1/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
 
-        echo "=== Настройка свитча ==="
+        echo "=== Настройка свитча (Аппаратный линк) ==="
         sed -i 's/BOARD_SINGLE_EPHY.*/BOARD_SINGLE_EPHY=y/g' $TARGET_MK
         sed -i 's/BOARD_EPHY_PORT_5.*/BOARD_EPHY_PORT_5=n/g' $TARGET_MK
-        # Отдаем светодиоды встроенному контроллеру для аппаратного мигания
         sed -i 's/BOARD_EPHY_GPIO_EN.*/BOARD_EPHY_GPIO_EN=n/g' $TARGET_MK
-        # Режим 4 аппаратно инвертирует полярность под схему Kimax
+        # Режим 4 аппаратно инвертирует полярность светодиода свитча под схему Kimax
         echo "BOARD_EPHY_LED_MODE=4" >> $TARGET_MK
 
-        echo "=== Безопасный хак pinctrl в рантайме ядра (Конец загрузки) ==="
-        RALINK_CORE="kernel-3.4.x/arch/mips/ralink/rt2880/mips.c"
-        if [ -f "$RALINK_CORE" ]; then
-          # Регистрируем макросы чтения/записи регистров в начале файла
-          sed -i '/void __init ralink_clk_init/i #define sysreg_w32(v, o) \*(volatile u32 *)(0xb0000000 + (o)) = (v)\n#define sysreg_r32(o) \*(volatile u32 *)(0xb0000000 + (o))' $RALINK_CORE
-          # Вставляем хак регистра 0x60 в функцию ralink_init_devices, когда все драйверы Wi-Fi уже запущены
-          sed -i '/void __init ralink_init_devices/a \    sysreg_w32(sysreg_r32(0x60) | (1 << 12), 0x60);' $RALINK_CORE
-        fi
+        # МЫ ПОЛНОСТЬЮ УБРАЛИ ХАК ИЗ MIPS.C, ЧТОБЫ ИСКЛЮЧИТЬ ОШИБКИ 0 БАЙТ!
 
         echo "=== Защита от сброса (Фикс однопортового режима) ==="
         DEFAULTS_H="user/shared/defaults.h"
         if [ -f "$DEFAULTS_H" ]; then
           sed -i 's/{ "rt_mode", "0" }/{ "rt_mode", "1" }/g' $DEFAULTS_H
+        fi
+
+        echo "=== Безопасная инициализация пина 44 через rc.local ==="
+        RC_LOCAL="user/scripts/rc.local"
+        if [ -f "$RC_LOCAL" ]; then
+          # Настраиваем принудительный аппаратный сброс регистра GPIO_MODE (0x60)
+          # с помощью mtk_gpio прямо на этапе загрузки пользователя, когда Wi-Fi уже запущен!
+          # Бит 12 отвечает за группу EPHY_LED. Мы включаем его через утилиту mtk_gpio
+          echo "mtk_gpio -s 12 1 2>/dev/null" >> $RC_LOCAL
         fi
 
         echo "=== Сборка ==="
