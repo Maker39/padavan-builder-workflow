@@ -88,24 +88,24 @@ jobs:
           sed -i '/ralink_clk_init/a \    sysreg_w32(sysreg_r32(0x60) | (1 << 12), 0x60);' $RALINK_CORE
         fi
 
-        echo "=== Защита от сброса (Фикс однопортового режима) ==="
+        echo "=== Защита от сброса и настройка триггера LED ==="
         DEFAULTS_H="user/shared/defaults.h"
         if [ -f "$DEFAULTS_H" ]; then
+          # Находим строку rt_mode и вставляем наши переменные прямо ПЕРЕД ней, внутри массива Си
+          sed -i '/{ "rt_mode", "0" }/i \	{ "lan_led_iface", "eth2" },\n\	{ "lan_led_act", "1" },' $DEFAULTS_H
+          # А саму строку rt_mode переключаем в режим Точки Доступа (1)
           sed -i 's/{ "rt_mode", "0" }/{ "rt_mode", "1" }/g' $DEFAULTS_H
         fi
 
-        echo "=== Активация триггера netdev для LAN LED ==="
+        echo "=== Скрипт автоприменения NVRAM ==="
         RC_LOCAL="user/scripts/rc.local"
         if [ -f "$RC_LOCAL" ]; then
-          # Записываем настройки светодиода напрямую в NVRAM при загрузке.
-          # Назначаем интерфейс eth2 (наша карта) и включаем триггер активности (1)
+          # Так как /sys/class нет, мы заставляем систему применить новые параметры из defaults.h в базу NVRAM при старте
           echo "nvram set lan_led_iface=eth2" >> $RC_LOCAL
           echo "nvram set lan_led_act=1" >> $RC_LOCAL
-          # Сразу применяем настройки к системному светодиоду через внутренний триггер ядра
-          echo "echo netdev > /sys/class/leds/lan/trigger 2>/dev/null" >> $RC_LOCAL
-          echo "echo eth2 > /sys/class/leds/lan/device_name 2>/dev/null" >> $RC_LOCAL
-          echo "echo 1 > /sys/class/leds/lan/link 2>/dev/null" >> $RC_LOCAL
+          echo "nvram commit" >> $RC_LOCAL
         fi
+
 
         echo "=== Сборка ==="
         ./clear_tree.sh
