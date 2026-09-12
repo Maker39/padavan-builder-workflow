@@ -102,22 +102,43 @@ jobs:
           sed -i 's/{ "rt_mode", "0" }/{ "rt_mode", "1" }/g' $DEFAULTS_H
         fi
 
-        echo "=== Интеграция HDD LED в WebUI и Бэкенд NVRAM ==="
-        # 1. Прописываем дефолтное значение переменной (1 = Авто/активность) в httpd/defaults.c
-        sed -i '/{ "led_wifi_mode",/a \ \ \ \ { "led_disk_mode", "1" },' user/httpd/defaults.c
-
-        # 2. Рендерим блок выбора режима светодиода HDD в меню Кнопки/LED (Advanced_Buttons_Content.asp)
-        # Вставляем блок новой строки TR сразу после строки выбора led_wifi_mode
-        sed -i '/name="led_wifi_mode"/{n;n;n;n;a \
-        <tr>\n    <th>HDD LED Mode<\/th>\n    <td>\n        <select name="led_disk_mode" class="input" onChange="applyRule();">\n            <option value="0" <% nvram_match_x("", "led_disk_mode", "0", "selected"); %>>Выключен<\/option>\n            <option value="1" <% nvram_match_x("", "led_disk_mode", "1", "selected"); %>>Активность HDD/USB (Авто)<\/option>\n            <option value="2" <% nvram_match_x("", "led_disk_mode", "2", "selected"); %>>Всегда включен<\/option>\n        <\/select>\n    <\/td>\n<\/tr>
-        }' user/www/Advanced_Buttons_Content.asp
-
-        # 3. Добавляем считывание переменной и обработку логики триггеров в rc/services.c
-        sed -i '/int led_wifi_mode =/a \ \ \ \ int led_disk_mode = nvram_get_int("led_disk_mode");' user/rc/services.c
+        echo "=== Автоматический поиск и патчинг файлов для HDD LED (padavan-ng) ==="
         
-        # Встраиваем обработку switch(led_disk_mode) прямо перед обработкой wifi_mode в коде
-        sed -i '/switch (led_wifi_mode)/i \
-        #ifdef BOARD_GPIO_LED_DISK\n    switch (led_disk_mode) {\n        case 0:\n            led_control(BOARD_GPIO_LED_DISK, LED_OFF);\n            break;\n        case 1:\n            set_led_trigger(BOARD_GPIO_LED_DISK, "disk-activity");\n            break;\n        case 2:\n            led_control(BOARD_GPIO_LED_DISK, LED_ON);\n            break;\n    }\n    #endif\n' user/rc/services.c
+        # 1. Поиск и патчинг файла дефолтов (defaults.c / defaults.h)
+        DEFAULTS_C_PATH=$(find . -name "defaults.c" -path "*/httpd/*" | head -n 1)
+        if [ -n "$DEFAULTS_C_PATH" ] && [ -f "$DEFAULTS_C_PATH" ]; then
+          echo "Патчим defaults.c: $DEFAULTS_C_PATH"
+          sed -i '/{ "led_wifi_mode",/a \ \ \ \ { "led_disk_mode", "1" },' "$DEFAULTS_C_PATH"
+        else
+          echo "ВНИМАНИЕ: defaults.c в httpd не найден, ищем общий defaults.h"
+          DEFAULTS_H_PATH=$(find . -name "defaults.h" -path "*/shared/*" | head -n 1)
+          if [ -n "$DEFAULTS_H_PATH" ]; then
+             sed -i '/{ "led_wifi_mode",/a \ \ \ \ { "led_disk_mode", "1" },' "$DEFAULTS_H_PATH"
+          fi
+        fi
+
+        # 2. Поиск и патчинг ASP страницы веб-интерфейса
+        WEB_ASP_PATH=$(find . -name "Advanced_Buttons_Content.asp" | head -n 1)
+        if [ -n "$WEB_ASP_PATH" ] && [ -f "$WEB_ASP_PATH" ]; then
+          echo "Патчим ASP страницу: $WEB_ASP_PATH"
+          sed -i '/name="led_wifi_mode"/{n;n;n;n;a \
+          <tr>\n    <th>HDD LED Mode<\/th>\n    <td>\n        <select name="led_disk_mode" class="input" onChange="applyRule();">\n            <option value="0" <% nvram_match_x("", "led_disk_mode", "0", "selected"); %>>Выключен<\/option>\n            <option value="1" <% nvram_match_x("", "led_disk_mode", "1", "selected"); %>>Активность HDD/USB (Авто)<\/option>\n            <option value="2" <% nvram_match_x("", "led_disk_mode", "2", "selected"); %>>Всегда включен<\/option>\n        <\/select>\n    <\/td>\n<\/tr>
+          }' "$WEB_ASP_PATH"
+        else
+          echo "Ошибка: Файл Advanced_Buttons_Content.asp не найден!" && exit 1
+        fi
+
+        # 3. Поиск и патчинг бэкенда управления (services.c)
+        SERVICES_C_PATH=$(find . -name "services.c" -path "*/rc/*" | head -n 1)
+        if [ -n "$SERVICES_C_PATH" ] && [ -f "$SERVICES_C_PATH" ]; then
+          echo "Патчим бэкенд rc: $SERVICES_C_PATH"
+          sed -i '/int led_wifi_mode =/a \ \ \ \ int led_disk_mode = nvram_get_int("led_disk_mode");' "$SERVICES_C_PATH"
+          
+          sed -i '/switch (led_wifi_mode)/i \
+          #ifdef BOARD_GPIO_LED_DISK\n    switch (led_disk_mode) {\n        case 0:\n            led_control(BOARD_GPIO_LED_DISK, LED_OFF);\n            break;\n        case 1:\n            set_led_trigger(BOARD_GPIO_LED_DISK, "disk-activity");\n            break;\n        case 2:\n            led_control(BOARD_GPIO_LED_DISK, LED_ON);\n            break;\n    }\n    #endif\n' "$SERVICES_C_PATH"
+        else
+          echo "Ошибка: Файл services.c не найден!" && exit 1
+        fi
 
         echo "=== Сборка ==="
         ./clear_tree.sh
