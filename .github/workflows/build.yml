@@ -70,7 +70,7 @@ jobs:
         echo "=== Настройка GPIO для Kimax (Режим Power/System LED) ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
         
-        # Отвязываем LAN и Wi-Fi от сетевых триггеров (ставим пустышки 99)
+        # Отвязываем LAN и Wi-Fi от сетевых триггеров
         sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          99/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      0/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_LED_WIFI.*/#define BOARD_GPIO_LED_WIFI         99/' $TARGET_H
@@ -83,11 +83,13 @@ jobs:
         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
 
-        echo "=== Добавление аппаратной конфигурации HDD LED (GPIO15) ==="
-        sed -i '/#define BOARD_GPIO_LED_DISK/d' $TARGET_H
-        sed -i '/#define BOARD_GPIO_LED_DISK_INV/d' $TARGET_H
-        echo "#define BOARD_GPIO_LED_DISK        15" >> $TARGET_H
-        echo "#define BOARD_GPIO_LED_DISK_INV    1" >> $TARGET_H
+        echo "=== АКТИВАЦИЯ ЗАВОДСКОГО USB LED НА GPIO15 ==="
+        # Удаляем старый #undef или #define для USB LED
+        sed -i '/BOARD_GPIO_LED_USB/d' $TARGET_H
+        
+        # Прописываем включение официального светодиода USB на 15 пин с инверсией
+        echo "#define BOARD_GPIO_LED_USB          15" >> $TARGET_H
+        echo "#define BOARD_GPIO_LED_USB_INV      1" >> $TARGET_H
 
         echo "=== Настройка свитча ==="
         sed -i 's/BOARD_SINGLE_EPHY.*/BOARD_SINGLE_EPHY=y/g' $TARGET_MK
@@ -101,78 +103,6 @@ jobs:
           sed -i 's/{ "rt_mode", "0" }/{ "rt_mode", "1" }/g' $DEFAULTS_H
         fi
 
-        echo "=== Внедрение скрипта кастомизации WebUI и Бэкенда HDD LED ==="
-        # Записываем команды патчинга внутрь официального хука, который выполнится в момент сборки юзерспейса
-        cat << 'EOF' >> user/scripts/custom_script.sh
-
-        echo "========================================================"
-        echo "=== ПАТЧИНГ КНОПОК / LED ДЛЯ HDD LED (GPIO15) ==="
-        echo "========================================================"
-
-        # 1. Патчим defaults.c в httpd (инициализация переменной NVRAM)
-        DEFAULTS_C_PATH=$(find . -name "defaults.c" -path "*/httpd/*" | head -n 1)
-        if [ -n "$DEFAULTS_C_PATH" ] && [ -f "$DEFAULTS_C_PATH" ]; then
-            echo "Патчим: $DEFAULTS_C_PATH"
-            sed -i '/{ "led_wifi_mode",/a \ \ \ \ { "led_disk_mode", "1" },' "$DEFAULTS_C_PATH"
-        fi
-
-        # 2. ДИНАМИЧЕСКИЙ ИНЪЕКТ ЧЕРЕЗ JAVASCRIPT (В конец страницы перед </script>)
-        WEB_ASP_PATH=$(find . -name "Advanced_Buttons_Content.asp" | head -n 1)
-        if [ -n "$WEB_ASP_PATH" ] && [ -f "$WEB_ASP_PATH" ]; then
-            echo "Патчим JS на странице: $WEB_ASP_PATH"
-            
-            # Мы пишем нативный JS, который найдет таблицу настроек светодиодов 
-            # и создаст новую строчку TR с селектором, полностью сохранив логику NVRAM.
-            cat << 'JS_EOF' >> "$WEB_ASP_PATH"
-        <script type="text/javascript">
-        window.addEventListener('DOMContentLoaded', function() {
-        // Находим первый выпадающий селектор светодиодов на странице (обычно это Power или WiFi LED)
-        var baseSelect = document.querySelector('select[name="led_wifi_mode"]') || document.querySelector('select[name="led_power_mode"]');
-        if (baseSelect) {
-        // Находим родительскую строку таблицы (TR)
-        var baseRow = baseSelect.closest('tr');
-        if (baseRow) {
-            // Создаем новую строку таблицы для HDD LED
-            var newRow = document.createElement('tr');
-            
-            // Получаем текущее значение из NVRAM через ASP-тег, который сервер Padavan распарсит при отдаче страницы
-            var savedValue = '<% nvram_get_x("", "led_disk_mode"); %>';
-            if (!savedValue || savedValue === "") { savedValue = "1"; } // Дефолт, если пусто
-            
-            var opt0 = (savedValue === "0") ? "selected" : "";
-            var opt1 = (savedValue === "1") ? "selected" : "";
-            var opt2 = (savedValue === "2") ? "selected" : "";
-            
-            newRow.innerHTML = '<th>HDD LED Mode</th><td>' +
-                '<select name="led_disk_mode" class="input" onChange="applyRule();">' +
-                '<option value="0" ' + opt0 + '>Выключен</option>' +
-                '<option value="1" ' + opt1 + '>Активность HDD/USB (Авто)</option>' +
-                '<option value="2" ' + opt2 + '>Всегда включен</option>' +
-                '</select></td>';
-                
-            // Вставляем новую строку сразу после строки WiFi/Power LED
-            baseRow.parentNode.insertBefore(newRow, baseRow.nextSibling);
-            console.log("HDD LED Успешно интегрирован в WebUI");
-                }
-            }
-        });
-        </script>
-        JS_EOF
-        fi
-
-        # 3. Патчим логику управления триггерами в services.c
-        SERVICES_C_PATH=$(find . -name "services.c" -path "*/rc/*" | head -n 1)
-        if [ -n "$SERVICES_C_PATH" ] && [ -f "$SERVICES_C_PATH" ]; then
-            echo "Патчим бэкенд: $SERVICES_C_PATH"
-            sed -i '/int led_wifi_mode =/a \ \ \ \ int led_disk_mode = nvram_get_int("led_disk_mode");' "$SERVICES_C_PATH"
-            
-            sed -i '/switch (led_wifi_mode)/i \
-            #ifdef BOARD_GPIO_LED_DISK\n    switch (led_disk_mode) {\n        case 0:\n            led_control(BOARD_GPIO_LED_DISK, LED_OFF);\n            break;\n        case 1:\n            set_led_trigger(BOARD_GPIO_LED_DISK, "disk-activity");\n            break;\n        case 2:\n            led_control(BOARD_GPIO_LED_DISK, LED_ON);\n            break;\n    }\n    #endif\n' "$SERVICES_C_PATH"
-        fi
-        EOF
-
-
-
         echo "=== Сборка ==="
         ./clear_tree.sh
         ./build_firmware.sh
@@ -180,6 +110,7 @@ jobs:
         FW_FILE_NAME="$(find images -type f -regextype posix-extended -iregex ".*\.(trx|bin)$" -printf "%T@\t%f\n" | sort -V | tail -1 | cut -f2)"
         [[ -n $FW_FILE_NAME ]] || { echo "Firmware file not found"; exit 1; }
         echo "FW_FILE_NAME=$FW_FILE_NAME" >> $GITHUB_ENV
+
 
         
 #  еще вариант предложенный AI (нужно проверять)  
