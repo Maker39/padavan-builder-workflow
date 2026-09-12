@@ -68,26 +68,34 @@ jobs:
 
         echo "=== Настройка GPIO для Kimax ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
+        # Возвращаем пин 44 автоматике ядра
         sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          44/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      1/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
 
-        echo "=== Настройка свитча и программного LED ==="
+        echo "=== Настройка свитча и освобождение пина 44 ==="
         sed -i 's/BOARD_SINGLE_EPHY.*/BOARD_SINGLE_EPHY=y/g' $TARGET_MK
         sed -i 's/BOARD_EPHY_PORT_5.*/BOARD_EPHY_PORT_5=n/g' $TARGET_MK
-        sed -i 's/BOARD_EPHY_GPIO_EN.*/BOARD_EPHY_GPIO_EN=n/g' $TARGET_MK
-        # Отключаем аппаратный режим свитча (ставим 0), чтобы вернуть пин 44 под контроль ОС
-        sed -i 's/BOARD_EPHY_LED_MODE.*/BOARD_EPHY_LED_MODE=0/g' $TARGET_MK
-        # Включаем программный триггер для порта LAN
-        echo "BOARD_MANUAL_LED_LAN_PORT=0" >> $TARGET_MK
+        # Переводим пины свитча в режим чистых GPIO, чтобы ядро могло ими управлять
+        echo "BOARD_EPHY_GPIO_EN=y" >> $TARGET_MK
+        echo "BOARD_EPHY_LED_MODE=15" >> $TARGET_MK
 
+        echo "=== Ювелирный хак pinctrl для MT7620A ==="
+        RALINK_CORE="kernel-3.4.x/arch/mips/ralink/rt2880/mips.c"
+        if [ -f "$RALINK_CORE" ]; then
+          sed -i '/void __init ralink_clk_init/i #define sysreg_w32(v, o) \*(volatile u32 *)(0xb0000000 + (o)) = (v)\n#define sysreg_r32(o) \*(volatile u32 *)(0xb0000000 + (o))' $RALINK_CORE
+          sed -i '/ralink_clk_init/a \    sysreg_w32(sysreg_r32(0x60) | (1 << 12), 0x60);' $RALINK_CORE
+        fi
 
         echo "=== Защита от сброса (Фикс однопортового режима) ==="
         DEFAULTS_H="user/shared/defaults.h"
         if [ -f "$DEFAULTS_H" ]; then
-          # Прописываем по умолчанию режим Точки Доступа (AP), исключая VLAN-конфликты
           sed -i 's/{ "rt_mode", "0" }/{ "rt_mode", "1" }/g' $DEFAULTS_H
+          # ХАК: Жестко прописываем триггер netdev для LAN светодиода на интерфейс eth2
+          # Теперь само ядро Linux будет управлять зажиганием пина 44 при наличии физического линка
+          sed -i 's/{ "lan_led_act", ".*" }/{ "lan_led_act", "1" }/g' $DEFAULTS_H
+          echo '{ "lan_led_iface", "eth2" },' >> $DEFAULTS_H
         fi
 
         echo "=== Сборка ==="
@@ -97,12 +105,6 @@ jobs:
         FW_FILE_NAME="$(find images -type f -regextype posix-extended -iregex ".*\.(trx|bin)$" -printf "%T@\t%f\n" | sort -V | tail -1 | cut -f2)"
         [[ -n $FW_FILE_NAME ]] || { echo "Firmware file not found"; exit 1; }
         echo "FW_FILE_NAME=$FW_FILE_NAME" >> $GITHUB_ENV
-
-
-
-
-
-
         
 #  еще вариант предложенный AI (нужно проверять)  
 # Мы внедрим наши sed-команды прямо внутрь официального скрипта автоматизации trunk/user/scripts/custom_script.sh. 
