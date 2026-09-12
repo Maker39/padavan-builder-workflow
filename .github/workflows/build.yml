@@ -69,46 +69,33 @@ jobs:
 
         echo "=== Настройка GPIO для Kimax ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
-        # Отвязываем LAN светодиод от автоматики ядра в board.h (ставим пустышку 99),
-        # чтобы ядро не конфликтовало со свитчем при загрузке
-        sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          99/' $TARGET_H
-        sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      0/' $TARGET_H
+        # Возвращаем пин 44 автоматике ядра (или свитча) в board.h
+        sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          44/' $TARGET_H
+        sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      1/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
 
         echo "=== Настройка свитча ==="
         sed -i 's/BOARD_SINGLE_EPHY.*/BOARD_SINGLE_EPHY=y/g' $TARGET_MK
         sed -i 's/BOARD_EPHY_PORT_5.*/BOARD_EPHY_PORT_5=n/g' $TARGET_MK
-        echo "BOARD_EPHY_GPIO_EN=y" >> $TARGET_MK
-        echo "BOARD_EPHY_LED_MODE=15" >> $TARGET_MK
+        # Отдаем светодиоды встроенному контроллеру для аппаратного мигания
+        sed -i 's/BOARD_EPHY_GPIO_EN.*/BOARD_EPHY_GPIO_EN=n/g' $TARGET_MK
+        # Режим 4 аппаратно инвертирует полярность под схему Kimax
+        echo "BOARD_EPHY_LED_MODE=4" >> $TARGET_MK
 
-        # МЫ ПОЛНОСТЬЮ УБРАЛИ ХАК PINCTRL ИЗ MIPS.C, ЧТОБЫ ИСКЛЮЧИТЬ КОМУ РОУТЕРА!
+        echo "=== Безопасный хак pinctrl в рантайме ядра (Конец загрузки) ==="
+        RALINK_CORE="kernel-3.4.x/arch/mips/ralink/rt2880/mips.c"
+        if [ -f "$RALINK_CORE" ]; then
+          # Регистрируем макросы чтения/записи регистров в начале файла
+          sed -i '/void __init ralink_clk_init/i #define sysreg_w32(v, o) \*(volatile u32 *)(0xb0000000 + (o)) = (v)\n#define sysreg_r32(o) \*(volatile u32 *)(0xb0000000 + (o))' $RALINK_CORE
+          # Вставляем хак регистра 0x60 в функцию ralink_init_devices, когда все драйверы Wi-Fi уже запущены
+          sed -i '/void __init ralink_init_devices/a \    sysreg_w32(sysreg_r32(0x60) | (1 << 12), 0x60);' $RALINK_CORE
+        fi
 
         echo "=== Защита от сброса (Фикс однопортового режима) ==="
         DEFAULTS_H="user/shared/defaults.h"
         if [ -f "$DEFAULTS_H" ]; then
           sed -i 's/{ "rt_mode", "0" }/{ "rt_mode", "1" }/g' $DEFAULTS_H
-        fi
-
-        echo "=== Безопасное управление светодиодом после загрузки ==="
-        RC_LOCAL="user/scripts/rc.local"
-        if [ -f "$RC_LOCAL" ]; then
-          # Переводим пин 44 в режим вывода (out) и гасим его штатно
-          echo "mtk_gpio -d 44 out 2>/dev/null" >> $RC_LOCAL
-          echo "mtk_gpio -w 44 1 2>/dev/null" >> $RC_LOCAL
-          
-          # Фоновый опрос таблицы линков arp (или соседей), так как теперь
-          # интерфейс eth2 загружается корректно и стабильно
-          echo "(" >> $RC_LOCAL
-          echo "  while true; do" >> $RC_LOCAL
-          echo "    if ip link show eth2.1 2>/dev/null | grep -q \"LOWER_UP\" || ip link show eth2 2>/dev/null | grep -q \"LOWER_UP\"; then" >> $RC_LOCAL
-          echo "      mtk_gpio -w 44 0 2>/dev/null" >> $RC_LOCAL
-          echo "    else" >> $RC_LOCAL
-          echo "      mtk_gpio -w 44 1 2>/dev/null" >> $RC_LOCAL
-          echo "    fi" >> $RC_LOCAL
-          echo "    sleep 2" >> $RC_LOCAL
-          echo "  done" >> $RC_LOCAL
-          echo ") &" >> $RC_LOCAL
         fi
 
         echo "=== Сборка ==="
@@ -118,6 +105,7 @@ jobs:
         FW_FILE_NAME="$(find images -type f -regextype posix-extended -iregex ".*\.(trx|bin)$" -printf "%T@\t%f\n" | sort -V | tail -1 | cut -f2)"
         [[ -n $FW_FILE_NAME ]] || { echo "Firmware file not found"; exit 1; }
         echo "FW_FILE_NAME=$FW_FILE_NAME" >> $GITHUB_ENV
+
 
 
         
