@@ -49,6 +49,7 @@ jobs:
 # Включение автоопределения памяти (как в OpenWrt)
 # Мы модифицируем исходный код Kconfig и конфигурационные файлы платы WT3020H16M до сборки,
 # заставляя ядро Padavan доверять загрузчику Breed.
+
     - name: Build firmware
       run: |
         sed -i 's/"//g' build.config
@@ -68,6 +69,8 @@ jobs:
 
         echo "=== Настройка GPIO для Kimax ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
+        # Отвязываем LAN светодиод от автоматики ядра в board.h (ставим пустышку 99),
+        # чтобы ядро не конфликтовало со свитчем при загрузке
         sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          99/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      0/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
@@ -79,12 +82,7 @@ jobs:
         echo "BOARD_EPHY_GPIO_EN=y" >> $TARGET_MK
         echo "BOARD_EPHY_LED_MODE=15" >> $TARGET_MK
 
-        echo "=== Ювелирный хак pinctrl для MT7620A ==="
-        RALINK_CORE="kernel-3.4.x/arch/mips/ralink/rt2880/mips.c"
-        if [ -f "$RALINK_CORE" ]; then
-          sed -i '/void __init ralink_clk_init/i #define sysreg_w32(v, o) \*(volatile u32 *)(0xb0000000 + (o)) = (v)\n#define sysreg_r32(o) \*(volatile u32 *)(0xb0000000 + (o))' $RALINK_CORE
-          sed -i '/ralink_clk_init/a \    sysreg_w32(sysreg_r32(0x60) | (1 << 12), 0x60);' $RALINK_CORE
-        fi
+        # МЫ ПОЛНОСТЬЮ УБРАЛИ ХАК PINCTRL ИЗ MIPS.C, ЧТОБЫ ИСКЛЮЧИТЬ КОМУ РОУТЕРА!
 
         echo "=== Защита от сброса (Фикс однопортового режима) ==="
         DEFAULTS_H="user/shared/defaults.h"
@@ -92,23 +90,22 @@ jobs:
           sed -i 's/{ "rt_mode", "0" }/{ "rt_mode", "1" }/g' $DEFAULTS_H
         fi
 
-        echo "=== Фоновый демон управления светодиодом ==="
+        echo "=== Безопасное управление светодиодом после загрузки ==="
         RC_LOCAL="user/scripts/rc.local"
         if [ -f "$RC_LOCAL" ]; then
+          # Переводим пин 44 в режим вывода (out) и гасим его штатно
           echo "mtk_gpio -d 44 out 2>/dev/null" >> $RC_LOCAL
           echo "mtk_gpio -w 44 1 2>/dev/null" >> $RC_LOCAL
+          
+          # Фоновый опрос таблицы линков arp (или соседей), так как теперь
+          # интерфейс eth2 загружается корректно и стабильно
           echo "(" >> $RC_LOCAL
-          echo "  LAST_INTR=0" >> $RC_LOCAL
           echo "  while true; do" >> $RC_LOCAL
-          # Читаем аппаратные прерывания eth2 из /proc/interrupts. При наличии линка они обязаны расти!
-          echo "    CUR_INTR=\$(grep \"eth2\" /proc/interrupts 2>/dev/null | awk '{print \$2}')" >> $RC_LOCAL
-          echo "    [ -z \"\$CUR_INTR\" ] && CUR_INTR=0" >> $RC_LOCAL
-          echo "    if [ \"\$CUR_INTR\" -ne \"\$LAST_INTR\" ]; then" >> $RC_LOCAL
+          echo "    if ip link show eth2.1 2>/dev/null | grep -q \"LOWER_UP\" || ip link show eth2 2>/dev/null | grep -q \"LOWER_UP\"; then" >> $RC_LOCAL
           echo "      mtk_gpio -w 44 0 2>/dev/null" >> $RC_LOCAL
           echo "    else" >> $RC_LOCAL
           echo "      mtk_gpio -w 44 1 2>/dev/null" >> $RC_LOCAL
           echo "    fi" >> $RC_LOCAL
-          echo "    LAST_INTR=\$CUR_INTR" >> $RC_LOCAL
           echo "    sleep 2" >> $RC_LOCAL
           echo "  done" >> $RC_LOCAL
           echo ") &" >> $RC_LOCAL
