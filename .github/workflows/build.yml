@@ -68,26 +68,51 @@ jobs:
 
         echo "=== Настройка GPIO для Kimax ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
-        sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          44/' $TARGET_H
-        sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      1/' $TARGET_H
+        sed -i 's/#define BOARD_GPIO_LED_LAN.*/#define BOARD_GPIO_LED_LAN          99/' $TARGET_H
+        sed -i 's/#define BOARD_GPIO_LED_LAN_INV.*/#define BOARD_GPIO_LED_LAN_INV      0/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
 
-        echo "=== Перестройка свитча под ОДИН физический LAN порт ==="
-        # Переводим свитч в режим одной физической линии (однопортовое устройство)
+        echo "=== Настройка свитча ==="
         sed -i 's/BOARD_SINGLE_EPHY.*/BOARD_SINGLE_EPHY=y/g' $TARGET_MK
         sed -i 's/BOARD_EPHY_PORT_5.*/BOARD_EPHY_PORT_5=n/g' $TARGET_MK
-        # Включаем GPIO подсистему для портов
         echo "BOARD_EPHY_GPIO_EN=y" >> $TARGET_MK
         echo "BOARD_EPHY_LED_MODE=15" >> $TARGET_MK
 
-        # ХАК СВИТЧА: Перенаправляем внутреннюю карту портов Padavan.
-        # Говорим системе, что WAN-порта физически нет (отключаем его), 
-        # а единственный порт привязываем строго к локальной сети (LAN).
-        # Это защитит роутер от изоляции сети при сбросе настроек в режиме Маршрутизатора!
-        echo "BOARD_HAS_VLAN=n" >> $TARGET_MK
-        echo "BOARD_NUM_LAN_PORTS=1" >> $TARGET_MK
-        echo "BOARD_NUM_WAN_PORTS=0" >> $TARGET_MK
+        echo "=== Ювелирный хак pinctrl для MT7620A ==="
+        RALINK_CORE="kernel-3.4.x/arch/mips/ralink/rt2880/mips.c"
+        if [ -f "$RALINK_CORE" ]; then
+          sed -i '/void __init ralink_clk_init/i #define sysreg_w32(v, o) \*(volatile u32 *)(0xb0000000 + (o)) = (v)\n#define sysreg_r32(o) \*(volatile u32 *)(0xb0000000 + (o))' $RALINK_CORE
+          sed -i '/ralink_clk_init/a \    sysreg_w32(sysreg_r32(0x60) | (1 << 12), 0x60);' $RALINK_CORE
+        fi
+
+        echo "=== Защита от сброса (Фикс однопортового режима) ==="
+        DEFAULTS_H="user/shared/defaults.h"
+        if [ -f "$DEFAULTS_H" ]; then
+          sed -i 's/{ "rt_mode", "0" }/{ "rt_mode", "1" }/g' $DEFAULTS_H
+        fi
+
+        echo "=== Фоновый демон управления светодиодом ==="
+        RC_LOCAL="user/scripts/rc.local"
+        if [ -f "$RC_LOCAL" ]; then
+          echo "mtk_gpio -d 44 out 2>/dev/null" >> $RC_LOCAL
+          echo "mtk_gpio -w 44 1 2>/dev/null" >> $RC_LOCAL
+          echo "(" >> $RC_LOCAL
+          echo "  LAST_INTR=0" >> $RC_LOCAL
+          echo "  while true; do" >> $RC_LOCAL
+          # Читаем аппаратные прерывания eth2 из /proc/interrupts. При наличии линка они обязаны расти!
+          echo "    CUR_INTR=\$(grep \"eth2\" /proc/interrupts 2>/dev/null | awk '{print \$2}')" >> $RC_LOCAL
+          echo "    [ -z \"\$CUR_INTR\" ] && CUR_INTR=0" >> $RC_LOCAL
+          echo "    if [ \"\$CUR_INTR\" -ne \"\$LAST_INTR\" ]; then" >> $RC_LOCAL
+          echo "      mtk_gpio -w 44 0 2>/dev/null" >> $RC_LOCAL
+          echo "    else" >> $RC_LOCAL
+          echo "      mtk_gpio -w 44 1 2>/dev/null" >> $RC_LOCAL
+          echo "    fi" >> $RC_LOCAL
+          echo "    LAST_INTR=\$CUR_INTR" >> $RC_LOCAL
+          echo "    sleep 2" >> $RC_LOCAL
+          echo "  done" >> $RC_LOCAL
+          echo ") &" >> $RC_LOCAL
+        fi
 
         echo "=== Сборка ==="
         ./clear_tree.sh
@@ -96,6 +121,7 @@ jobs:
         FW_FILE_NAME="$(find images -type f -regextype posix-extended -iregex ".*\.(trx|bin)$" -printf "%T@\t%f\n" | sort -V | tail -1 | cut -f2)"
         [[ -n $FW_FILE_NAME ]] || { echo "Firmware file not found"; exit 1; }
         echo "FW_FILE_NAME=$FW_FILE_NAME" >> $GITHUB_ENV
+
 
         
 #  еще вариант предложенный AI (нужно проверять)  
