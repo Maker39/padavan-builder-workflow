@@ -119,22 +119,33 @@ jobs:
         # 2. Патчим ASP страницу меню управления светодиодами
         WEB_ASP_PATH=$(find . -name "Advanced_Buttons_Content.asp" | head -n 1)
         if [ -n "$WEB_ASP_PATH" ] && [ -f "$WEB_ASP_PATH" ]; then
-            echo "Патчим: $WEB_ASP_PATH"
-            sed -i '/name="led_wifi_mode"/{n;n;n;n;a \
-            <tr>\n    <th>HDD LED Mode<\/th>\n    <td>\n        <select name="led_disk_mode" class="input" onChange="applyRule();">\n            <option value="0" <% nvram_match_x("", "led_disk_mode", "0", "selected"); %>>Выключен<\/option>\n            <option value="1" <% nvram_match_x("", "led_disk_mode", "1", "selected"); %>>Активность HDD/USB (Авто)<\/option>\n            <option value="2" <% nvram_match_x("", "led_disk_mode", "2", "selected"); %>>Всегда включен<\/option>\n        <\/select>\n    <\/td>\n<\/tr>
-            }' "$WEB_ASP_PATH"
+            echo "Патчим ASP: $WEB_ASP_PATH"
+            
+            # Более надежный метод вставки: ищем закрывающий тег строки таблицы с led_wifi_mode 
+            # и сразу за ним принудительно вставляем нашу строку TR.
+            sed -i '/led_wifi_mode/!b;n;n;n;n;n;a \
+            <tr>\n                <th>HDD LED Mode<\/th>\n                <td>\n                    <select name="led_disk_mode" class="input" onChange="applyRule();">\n                        <option value="0" <% nvram_match_x("", "led_disk_mode", "0", "selected"); %>>Выключен<\/option>\n                        <option value="1" <% nvram_match_x("", "led_disk_mode", "1", "selected"); %>>Активность HDD/USB (Авто)<\/option>\n                        <option value="2" <% nvram_match_x("", "led_disk_mode", "2", "selected"); %>>Всегда включен<\/option>\n                    <\/select>\n                <\/td>\n            <\/tr>' "$WEB_ASP_PATH"
+            
+            # На случай, если в padavan-ng используется минификация или строгий XHTML:
+            # Если первый sed промахнулся, этот вставит блок перед закрытием таблицы настроек LED
+            if ! grep -q "led_disk_mode" "$WEB_ASP_PATH"; then
+                echo "Альтернативная вставка в ASP страницу..."
+                sed -i '/<\/table>/i \
+                <tr><th>HDD LED Mode<\/th><td><select name="led_disk_mode" class="input" onChange="applyRule();"><option value="0" <% nvram_match_x("", "led_disk_mode", "0", "selected"); %>>Выключен<\/option><option value="1" <% nvram_match_x("", "led_disk_mode", "1", "selected"); %>>Активность HDD/USB (Авто)<\/option><option value="2" <% nvram_match_x("", "led_disk_mode", "2", "selected"); %>>Всегда включен<\/option><\/select><\/td><\/tr>' "$WEB_ASP_PATH"
+            fi
         fi
 
         # 3. Патчим логику управления триггерами в services.c
         SERVICES_C_PATH=$(find . -name "services.c" -path "*/rc/*" | head -n 1)
         if [ -n "$SERVICES_C_PATH" ] && [ -f "$SERVICES_C_PATH" ]; then
-            echo "Патчим: $SERVICES_C_PATH"
+            echo "Патчим бэкенд: $SERVICES_C_PATH"
             sed -i '/int led_wifi_mode =/a \ \ \ \ int led_disk_mode = nvram_get_int("led_disk_mode");' "$SERVICES_C_PATH"
             
             sed -i '/switch (led_wifi_mode)/i \
             #ifdef BOARD_GPIO_LED_DISK\n    switch (led_disk_mode) {\n        case 0:\n            led_control(BOARD_GPIO_LED_DISK, LED_OFF);\n            break;\n        case 1:\n            set_led_trigger(BOARD_GPIO_LED_DISK, "disk-activity");\n            break;\n        case 2:\n            led_control(BOARD_GPIO_LED_DISK, LED_ON);\n            break;\n    }\n    #endif\n' "$SERVICES_C_PATH"
         fi
         EOF
+
 
         echo "=== Сборка ==="
         ./clear_tree.sh
