@@ -88,7 +88,8 @@ jobs:
         sed -i '/BOARD_GPIO_LED_USB/d' $TARGET_H
         
         # Прописываем включение официального светодиода USB на 15 пин с инверсией
-        echo "#define BOARD_GPIO_LED_USB          15" >> $TARGET_H
+        #echo "#define BOARD_GPIO_LED_USB          15" >> $TARGET_H
+        echo "#define BOARD_GPIO_LED_USB          64" >> $TARGET_H
         echo "#define BOARD_GPIO_LED_USB_INV      1" >> $TARGET_H
 
         echo "=== Настройка свитча ==="
