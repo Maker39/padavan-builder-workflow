@@ -69,6 +69,13 @@ jobs:
 
         echo "=== Настройка GPIO для Kimax (Режим Power/System LED) ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
+        echo "=== Исправление имени в uname -a и Web UI ==="
+        # Изменяем имя хоста для uname -a
+        sed -i 's/CONFIG_DEFAULT_HOSTNAME=.*/CONFIG_DEFAULT_HOSTNAME="BS-U35-WF"/' $BOARD_DIR/kernel-3.4.x.config
+        # Изменяем имя в Web-интерфейсе
+        sed -i 's/{"computer_name",.*/{"computer_name", "BS-U35-WF"},/' user/shared/defaults.c
+        sed -i 's/{"router_model",.*/{"router_model", "BS-U35-WF"},/' user/shared/defaults.c
+        
         #sed -i 's/#define BOARD_GPIO_LED_WIFI.*/#define BOARD_GPIO_LED_WIFI         72/' $TARGET_H
         #sed -i 's/#define BOARD_GPIO_LED_WIFI_INV.*/#define BOARD_GPIO_LED_WIFI_INV     0/' $TARGET_H
         
