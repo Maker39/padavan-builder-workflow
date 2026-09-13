@@ -110,7 +110,7 @@ jobs:
         # ./build_firmware.sh
 
         echo "=== Сборка ==="
-        ./clear_tree.sh
+        #./clear_tree.sh
         ./build_firmware
         
         echo "=== Переименование готового файла прошивки ==="
