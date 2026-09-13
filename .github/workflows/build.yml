@@ -110,8 +110,7 @@ jobs:
         # ./build_firmware.sh
 
         echo "=== Сборка ==="
-        #./clear_tree.sh
-        ./build_firmware
+        ./build_firmware.sh
         
         echo "=== Переименование готового файла прошивки ==="
         rename 's/WT3020H16M/BS-U35-WF/' images/*.trx
