@@ -13,7 +13,7 @@ Nexx WT3020H16M
 Reset: GPIO13
 RAM1: 128 MiB
 LAN LED: GPIO44
-HDD LED: GPIO ?
-WIFI LED: GPIO ?
+HDD LED: GPIO ? (64  or 15)
+WIFI LED: GPIO ? (72)
 * LAN led горит постоянно (исправить не удалось)
 * HDD led не отключается из интерфейса
