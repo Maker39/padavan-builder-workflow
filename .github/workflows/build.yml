@@ -69,25 +69,18 @@ jobs:
 
         echo "=== Настройка GPIO для Kimax (Режим Power/System LED) ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
-  
-        echo "=== Радикальный хардкод имени в исходный код ==="
-        # 1. Принудительно меняем макросы продукта в общем заголовочном файле
-        if [ -f user/shared/product.h ]; then
-          sed -i 's/#define PRODUCT_ID.*/#define PRODUCT_ID "BS-U35-WF"/' user/shared/product.h
-        fi
 
-        # 2. Перехватываем генерацию модели в коде инициализации перед make
-        # Вставляем жесткую перезапись переменных в defaults.c прямо в функцию инициализации
-        sed -i '/void r_nvram_set_default/a \    nvram_set("computer_name", "BS-U35-WF");\n    nvram_set("router_model", "BS-U35-WF");' user/shared/defaults.c
-        
-        # 3. Подменяем системное имя хоста (которое для uname -a) в скриптах инициализации системы
+        echo "=== Перехват имени при старте системы (Force Hostname & Web UI) ==="
+        # 1. Форсируем смену hostname в uname -a через скрипт автозапуска при загрузке системы
+        echo 'hostname BS-U35-WF' >> user/storage/start_script.sh
+        echo 'nvram set computer_name="BS-U35-WF"' >> user/storage/start_script.sh
+        echo 'nvram set router_model="BS-U35-WF"' >> user/storage/start_script.sh
+        echo 'nvram commit' >> user/storage/start_script.sh
+
+        # 2. Подменяем текстовые строки в веб-сервере и системных логах, чтобы убрать WT3020H16M
         find user/rc/ -type f -exec sed -i 's/WT3020H16M/BS-U35-WF/g' {} +
         find user/httpd/ -type f -exec sed -i 's/WT3020H16M/BS-U35-WF/g' {} +
-
-        
-        echo "=== Переименование готового файла прошивки ==="
-        cd images && mv *.trx BS-U35-WF.trx && cd ..
-
+        find user/shared/ -type f -exec sed -i 's/WT3020H16M/BS-U35-WF/g' {} +
         
         #sed -i 's/#define BOARD_GPIO_LED_WIFI.*/#define BOARD_GPIO_LED_WIFI         72/' $TARGET_H
         #sed -i 's/#define BOARD_GPIO_LED_WIFI_INV.*/#define BOARD_GPIO_LED_WIFI_INV     0/' $TARGET_H
