@@ -86,8 +86,9 @@ jobs:
 
         # Модифицируем скрипт сборщика образов, чтобы он принудительно вшивал BS-U35-WF
         if [ -f ../tools/libs_v2.sh ]; then
-          sed -i 
-
+         sed -i 's/FIRMWARE_PRODUCT_ID=.*/FIRMWARE_PRODUCT_ID="BS-U35-WF"/' ../tools/libs_v2.sh
+        fi
+        
         #sed -i 's/#define BOARD_GPIO_LED_WIFI.*/#define BOARD_GPIO_LED_WIFI         72/' $TARGET_H
         #sed -i 's/#define BOARD_GPIO_LED_WIFI_INV.*/#define BOARD_GPIO_LED_WIFI_INV     0/' $TARGET_H
         
