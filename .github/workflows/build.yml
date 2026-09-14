@@ -70,17 +70,14 @@ jobs:
         echo "=== Настройка GPIO для Kimax (Режим Power/System LED) ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
 
-        echo "=== Перехват имени при старте системы (Force Hostname & Web UI) ==="
-        # 1. Форсируем смену hostname в uname -a через скрипт автозапуска при загрузке системы
-        echo 'hostname BS-U35-WF' >> user/storage/start_script.sh
-        echo 'nvram set computer_name="BS-U35-WF"' >> user/storage/start_script.sh
-        echo 'nvram set router_model="BS-U35-WF"' >> user/storage/start_script.sh
-        echo 'nvram commit' >> user/storage/start_script.sh
+        echo "=== Внедрение кастомного имени в Си-код инициализации ==="
+        # 1. Внедряем принудительную установку hostname и NVRAM прямо на старте системы (в rc.c)
+        sed -i '/int main(int argc, char \*\*argv)/a \    system("hostname BS-U35-WF");\n    system("nvram set computer_name=BS-U35-WF");\n    system("nvram set router_model=BS-U35-WF");' user/rc/rc.c
 
-        # 2. Подменяем текстовые строки в веб-сервере и системных логах, чтобы убрать WT3020H16M
-        find user/rc/ -type f -exec sed -i 's/WT3020H16M/BS-U35-WF/g' {} +
-        find user/httpd/ -type f -exec sed -i 's/WT3020H16M/BS-U35-WF/g' {} +
-        find user/shared/ -type f -exec sed -i 's/WT3020H16M/BS-U35-WF/g' {} +
+        # 2. Вычищаем текстовые упоминания WT3020H16M в критических исходниках веб-сервера и логов
+        find user/rc/ -type f -name "*.c" -exec sed -i 's/WT3020H16M/BS-U35-WF/g' {} +
+        find user/httpd/ -type f -name "*.c" -exec sed -i 's/WT3020H16M/BS-U35-WF/g' {} +
+        find user/shared/ -type f -name "*.c" -exec sed -i 's/WT3020H16M/BS-U35-WF/g' {} +
         
         #sed -i 's/#define BOARD_GPIO_LED_WIFI.*/#define BOARD_GPIO_LED_WIFI         72/' $TARGET_H
         #sed -i 's/#define BOARD_GPIO_LED_WIFI_INV.*/#define BOARD_GPIO_LED_WIFI_INV     0/' $TARGET_H
