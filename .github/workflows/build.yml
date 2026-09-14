@@ -71,18 +71,29 @@ jobs:
         echo "=== Настройка GPIO для Kimax (Режим Power/System LED) ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
 
-        echo "=== Жесткий хардкод имени хоста в ядро Linux ==="
-        # 1. Меняем дефолтную инициализацию hostname в исходном коде ядра Linux (версия 3.4.x)
-        sed -i 's/#define UTS_NODENAME .*/#define UTS_NODENAME "BS-U35-WF"/' kernel/linux-3.4.x/include/generated/utsrelease.h 2>/dev/null || true
-        sed -i 's/init_uts_ns.name.nodename.*/strcpy(init_uts_ns.name.nodename, "BS-U35-WF");/' kernel/linux-3.4.x/init/version.c
+        echo "=== Сборка (первый этап до упаковки образов) ==="
+        # Запускаем сборку. Она скомпилирует ядро и приложения, создав папку trunk/rom
+        ./build_firmware.sh
 
-        # 2. Форсируем замену имени в NVRAM через Си-код инициализации системы
-        sed -i '/int main(int argc, char \*\*argv)/a \    system("nvram set computer_name=BS-U35-WF");\n    system("nvram set router_model=BS-U35-WF");\n    system("nvram commit");' user/rc/rc.c
+        echo "=== Подмена имени в готовой файловой системе (RootFS) ==="
+        # 1. Если файл приветствия (motd) существует, меняем имя в нем
+        if [ -f rom/etc/motd ]; then
+          sed -i 's/WT3020H16M/BS-U35-WF/g' rom/etc/motd
+        fi
 
-        # 3. Полная замена текстовых упоминаний во всех Си-файлах пространства пользователя
-        find user/rc/ -type f -name "*.c" -exec sed -i 's/WT3020H16M/BS-U35-WF/g' {} +
-        find user/httpd/ -type f -name "*.c" -exec sed -i 's/WT3020H16M/BS-U35-WF/g' {} +
-        find user/shared/ -type f -name "*.c" -exec sed -i 's/WT3020H16M/BS-U35-WF/g' {} +
+        # 2. Создаем кастомный скрипт автоматической подмены hostname при старте роутера
+        # Папка rom/etc/storage/ содержит дефолтные файлы, которые запишутся в NVRAM
+        mkdir -p rom/etc/storage
+        echo -e "#!/bin/sh\nhostname BS-U35-WF\nnvram set computer_name=BS-U35-WF\nnvram set router_model=BS-U35-WF\nnvram commit" > rom/etc/storage/start_script.sh
+        chmod +x rom/etc/storage/start_script.sh
+
+        # # 3. Пересобираем финальный образ .trx с изменениями в RootFS
+        # echo "=== Финальная упаковка прошивки ==="
+        # ./build_firmware.sh
+
+        # echo "=== Переименование готового файла прошивки ==="
+        # cd images && mv *.trx BS-U35-WF.trx && cd ..
+
 
 
 
