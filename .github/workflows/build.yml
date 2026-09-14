@@ -67,18 +67,25 @@ jobs:
         sed -i 's/DRAM_64M/DRAM_128M/g' $TARGET_H
         sed -i 's/RAM_SIZE=64/RAM_SIZE=128/g' $TARGET_MK
 
+ 
         echo "=== Настройка GPIO для Kimax (Режим Power/System LED) ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
 
-        echo "=== Внедрение кастомного имени в Си-код инициализации ==="
-        # 1. Внедряем принудительную установку hostname и NVRAM прямо на старте системы (в rc.c)
-        sed -i '/int main(int argc, char \*\*argv)/a \    system("hostname BS-U35-WF");\n    system("nvram set computer_name=BS-U35-WF");\n    system("nvram set router_model=BS-U35-WF");' user/rc/rc.c
+        echo "=== Жесткий хардкод имени хоста в ядро Linux ==="
+        # 1. Меняем дефолтную инициализацию hostname в исходном коде ядра Linux (версия 3.4.x)
+        sed -i 's/#define UTS_NODENAME .*/#define UTS_NODENAME "BS-U35-WF"/' kernel/linux-3.4.x/include/generated/utsrelease.h 2>/dev/null || true
+        sed -i 's/init_uts_ns.name.nodename.*/strcpy(init_uts_ns.name.nodename, "BS-U35-WF");/' kernel/linux-3.4.x/init/version.c
 
-        # 2. Вычищаем текстовые упоминания WT3020H16M в критических исходниках веб-сервера и логов
+        # 2. Форсируем замену имени в NVRAM через Си-код инициализации системы
+        sed -i '/int main(int argc, char \*\*argv)/a \    system("nvram set computer_name=BS-U35-WF");\n    system("nvram set router_model=BS-U35-WF");\n    system("nvram commit");' user/rc/rc.c
+
+        # 3. Полная замена текстовых упоминаний во всех Си-файлах пространства пользователя
         find user/rc/ -type f -name "*.c" -exec sed -i 's/WT3020H16M/BS-U35-WF/g' {} +
         find user/httpd/ -type f -name "*.c" -exec sed -i 's/WT3020H16M/BS-U35-WF/g' {} +
         find user/shared/ -type f -name "*.c" -exec sed -i 's/WT3020H16M/BS-U35-WF/g' {} +
-        
+
+
+
         #sed -i 's/#define BOARD_GPIO_LED_WIFI.*/#define BOARD_GPIO_LED_WIFI         72/' $TARGET_H
         #sed -i 's/#define BOARD_GPIO_LED_WIFI_INV.*/#define BOARD_GPIO_LED_WIFI_INV     0/' $TARGET_H
         
