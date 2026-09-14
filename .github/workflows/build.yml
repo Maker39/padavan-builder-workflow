@@ -70,24 +70,24 @@ jobs:
         echo "=== Настройка GPIO для Kimax (Режим Power/System LED) ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
   
-        echo "=== Полная замена имени WT3020H16M на BS-U35-WF ==="
-        # 1. Меняем все упоминания в файлах конфигурации платы NEXX
-        find $BOARD_DIR/ -type f -exec sed -i 's/WT3020H16M/BS-U35-WF/g' {} +
-        find $BOARD_DIR/ -type f -exec sed -i 's/WT3020/BS-U35-WF/g' {} +
-        
-        # 2. Жестко меняем макрос в board.h (на случай, если там была другая строка)
-        sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
-
-        # 3. Меняем дефолтные имена в исходниках веб-интерфейса и NVRAM
-        sed -i 's/"WT3020H16M"/"BS-U35-WF"/g' user/shared/defaults.c
-        sed -i 's/"WT3020"/"BS-U35-WF"/g' user/shared/defaults.c
-        sed -i 's/{"computer_name",.*/{"computer_name", "BS-U35-WF"},/' user/shared/defaults.c
-        sed -i 's/{"router_model",.*/{"router_model", "BS-U35-WF"},/' user/shared/defaults.c
-
-        # Модифицируем скрипт сборщика образов, чтобы он принудительно вшивал BS-U35-WF
-        if [ -f ../tools/libs_v2.sh ]; then
-         sed -i 's/FIRMWARE_PRODUCT_ID=.*/FIRMWARE_PRODUCT_ID="BS-U35-WF"/' ../tools/libs_v2.sh
+        echo "=== Радикальный хардкод имени в исходный код ==="
+        # 1. Принудительно меняем макросы продукта в общем заголовочном файле
+        if [ -f user/shared/product.h ]; then
+          sed -i 's/#define PRODUCT_ID.*/#define PRODUCT_ID "BS-U35-WF"/' user/shared/product.h
         fi
+
+        # 2. Перехватываем генерацию модели в коде инициализации перед make
+        # Вставляем жесткую перезапись переменных в defaults.c прямо в функцию инициализации
+        sed -i '/void r_nvram_set_default/a \    nvram_set("computer_name", "BS-U35-WF");\n    nvram_set("router_model", "BS-U35-WF");' user/shared/defaults.c
+        
+        # 3. Подменяем системное имя хоста (которое для uname -a) в скриптах инициализации системы
+        find user/rc/ -type f -exec sed -i 's/WT3020H16M/BS-U35-WF/g' {} +
+        find user/httpd/ -type f -exec sed -i 's/WT3020H16M/BS-U35-WF/g' {} +
+
+        
+        echo "=== Переименование готового файла прошивки ==="
+        cd images && mv *.trx BS-U35-WF.trx && cd ..
+
         
         #sed -i 's/#define BOARD_GPIO_LED_WIFI.*/#define BOARD_GPIO_LED_WIFI         72/' $TARGET_H
         #sed -i 's/#define BOARD_GPIO_LED_WIFI_INV.*/#define BOARD_GPIO_LED_WIFI_INV     0/' $TARGET_H
