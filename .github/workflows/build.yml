@@ -67,9 +67,6 @@ jobs:
         sed -i 's/DRAM_64M/DRAM_128M/g' $TARGET_H
         sed -i 's/RAM_SIZE=64/RAM_SIZE=128/g' $TARGET_MK
  
-        # echo "=== Настройка 128MB RAM ==="
-        # # (Здесь остаются ваши оригинальные команды для RAM)
-
         echo "=== Трюк с подменой профиля для обхода компилятора ядра ==="
         # 1. Переходим в папку с профилями плат
         cd configs/boards/NEXX/
@@ -96,29 +93,20 @@ jobs:
         sed -i 's/{"computer_name",.*/{"computer_name", "BS-U35-WF"},/' user/shared/defaults.c
         sed -i 's/{"router_model",.*/{"router_model", "BS-U35-WF"},/' user/shared/defaults.c
 
-        # echo "=== Сборка ==="
-        # # Запускаем сборку, подставив новое имя целевой платы в аргументы, если скрипт их принимает, 
-        # # либо build_firmware.sh сам подхватит измененный нами .config
-        # ./build_firmware.sh
-        
-        # echo "=== Переименование готового файла прошивки ==="
-        # cd images && mv *.trx BS-U35-WF.trx && cd ..
-
-
         #sed -i 's/#define BOARD_GPIO_LED_WIFI.*/#define BOARD_GPIO_LED_WIFI         72/' $TARGET_H
         #sed -i 's/#define BOARD_GPIO_LED_WIFI_INV.*/#define BOARD_GPIO_LED_WIFI_INV     0/' $TARGET_H
         
         sed -i 's/#define BOARD_GPIO_BTN_RESET.*/#define BOARD_GPIO_BTN_RESET        13/' $TARGET_H
         sed -i 's/#define BOARD_GPIO_BTN_RESET_INV.*/#define BOARD_GPIO_BTN_RESET_INV    1/' $TARGET_H
 
-        echo "=== АКТИВАЦИЯ ЗАВОДСКОГО USB LED НА GPIO15 ==="
+        # не работает, HDD LED похоже сидит на USB-SATA
+        #echo "=== АКТИВАЦИЯ ЗАВОДСКОГО USB LED НА GPIO15 ==="
         # Удаляем старый #undef или #define для USB LED
-        sed -i '/BOARD_GPIO_LED_USB/d' $TARGET_H
-        
+        #sed -i '/BOARD_GPIO_LED_USB/d' $TARGET_H
         # Прописываем включение официального светодиода USB на 15 пин с инверсией
         #echo "#define BOARD_GPIO_LED_USB          15" >> $TARGET_H
         #echo "#define BOARD_GPIO_LED_USB          64" >> $TARGET_H
-        echo "#define BOARD_GPIO_LED_USB_INV      1" >> $TARGET_H
+        #echo "#define BOARD_GPIO_LED_USB_INV      1" >> $TARGET_H
 
         echo "=== Настройка свитча ==="
         sed -i 's/BOARD_SINGLE_EPHY.*/BOARD_SINGLE_EPHY=y/g' $TARGET_MK
@@ -132,15 +120,14 @@ jobs:
           sed -i 's/{ "rt_mode", "0" }/{ "rt_mode", "1" }/g' $DEFAULTS_H
         fi
 
-        # echo "=== Сборка ==="
-        # ./clear_tree.sh
-        # ./build_firmware.sh
-
         echo "=== Сборка ==="
+        # Запускаем сборку, подставив новое имя целевой платы в аргументы, если скрипт их принимает, 
+        # # либо build_firmware.sh сам подхватит измененный нами .config
         ./build_firmware.sh
         
-        echo "=== Переименование готового файла прошивки ==="
-        #rename 's/WT3020H16M/BS-U35-WF/' images/*.trx
+        # echo "=== Переименование готового файла прошивки ==="
+        # cd images && mv *.trx BS-U35-WF.trx && cd ..
+        
         # Используем стандартный mv вместо утилиты rename
         #cd images && mv WT3020H16M*.trx BS-U35-WF.trx && cd ..
         echo "=== Переименование готового файла прошивки ==="
