@@ -71,28 +71,20 @@ jobs:
         echo "=== Настройка GPIO для Kimax (Режим Power/System LED) ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
 
-        echo "=== Сборка (первый этап до упаковки образов) ==="
-        ./build_firmware.sh
+        echo "=== Внедрение перехвата сборщика ядра (Патч build_firmware.sh) ==="
+        # Вставляем команду замены HOSTNAME в скрипт сборщика прямо перед фазой сборки ядра (модуль kernel)
+        sed -i '/make -C kernel/i \  sed -i "s/CONFIG_DEFAULT_HOSTNAME=.*/CONFIG_DEFAULT_HOSTNAME=\\"BS-U35-WF\\"/g" .config' build_firmware.sh
+        sed -i '/make -C kernel/i \  sed -i "s/CONFIG_DEFAULT_HOSTNAME=.*/CONFIG_DEFAULT_HOSTNAME=\\"BS-U35-WF\\"/g" linux-3.4.x/.config' build_firmware.sh
 
-        echo "=== Подмена имени в готовой файловой системе (RootFS) ==="
-        # 1. Форсируем смену имени ядра (uname -a) через глобальные настройки sysctl
-        mkdir -p rom/etc
-        echo "kernel.hostname=BS-U35-WF" >> rom/etc/sysctl.conf
+        echo "=== Принудительный хардкод переменных для Web UI ==="
+        sed -i 's/{"computer_name",.*/{"computer_name", "BS-U35-WF"},/' user/shared/defaults.c
+        sed -i 's/{"router_model",.*/{"router_model", "BS-U35-WF"},/' user/shared/defaults.c
 
-        # 2. Перехватываем дефолтный профиль в NVRAM и веб-сервере
-        if [ -f rom/etc/services.conf ]; then
-          sed -i 's/WT3020H16M/BS-U35-WF/g' rom/etc/services.conf
-        fi
-        
-        # 3. Жестко перезаписываем системный хост в конфигурации сетевых интерфейсов
-        echo "BS-U35-WF" > rom/etc/hostname
-
-        # echo "=== Финальная упаковка прошивки ==="
+        # echo "=== Сборка ==="
         # ./build_firmware.sh
-
+        
         # echo "=== Переименование готового файла прошивки ==="
         # cd images && mv *.trx BS-U35-WF.trx && cd ..
-
 
 
         #sed -i 's/#define BOARD_GPIO_LED_WIFI.*/#define BOARD_GPIO_LED_WIFI         72/' $TARGET_H
