@@ -125,11 +125,6 @@ jobs:
         # # либо build_firmware.sh сам подхватит измененный нами .config
         ./build_firmware.sh
         
-        # echo "=== Переименование готового файла прошивки ==="
-        # cd images && mv *.trx BS-U35-WF.trx && cd ..
-        
-        # Используем стандартный mv вместо утилиты rename
-        #cd images && mv WT3020H16M*.trx BS-U35-WF.trx && cd ..
         echo "=== Переименование готового файла прошивки ==="
         cd images && mv *.trx BS-U35-WF.trx && cd ..
         
