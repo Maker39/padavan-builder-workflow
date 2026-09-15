@@ -66,42 +66,41 @@ jobs:
         sed -i 's/CONFIG_RT2880_DRAM_64M=y/CONFIG_RT2880_DRAM_64M=n\nCONFIG_RT2880_DRAM_128M=y/g' $BOARD_DIR/kernel-3.4.x.config
         sed -i 's/DRAM_64M/DRAM_128M/g' $TARGET_H
         sed -i 's/RAM_SIZE=64/RAM_SIZE=128/g' $TARGET_MK
-
  
+        # echo "=== Настройка 128MB RAM ==="
+        # # (Здесь остаются ваши оригинальные команды для RAM)
+
+        echo "=== Трюк с подменой профиля для обхода компилятора ядра ==="
+        # 1. Переходим в папку с профилями плат
+        cd configs/boards/NEXX/
+        # 2. Создаем точную копию профиля WT3020H16M, но с нужным нам именем
+        cp -r WT3020H16M BS-U35-WF
+        # 3. Возвращаемся в корень trunk
+        cd ../../..
+
+        # 4. Перенаправляем переменные сборщика на наш новый фейковый профиль
+        BOARD_DIR="configs/boards/NEXX/BS-U35-WF"
+        TARGET_H="$BOARD_DIR/board.h"
+
         echo "=== Настройка GPIO для Kimax (Режим Power/System LED) ==="
         sed -i 's/#define BOARD_NAME.*/#define BOARD_NAME "BS-U35-WF"/' $TARGET_H
 
-        echo "=== Сборка (первый этап до упаковки образов) ==="
-        ./build_firmware.sh
+        echo "=== Исправление имени в ядре и Web UI внутри нового профиля ==="
+        # Меняем дефолтное имя хоста в конфиге ядра новой папки
+        sed -i 's/CONFIG_DEFAULT_HOSTNAME=.*/CONFIG_DEFAULT_HOSTNAME="BS-U35-WF"/' $BOARD_DIR/kernel-3.4.x.config
+        # Меняем ID продукта в сгенерированном build.config для сборщика
+        sed -i 's/CONFIG_FIRMWARE_PRODUCT_ID=.*/CONFIG_FIRMWARE_PRODUCT_ID="BS-U35-WF"/' .config 2>/dev/null || true
+        sed -i 's/WT3020H16M/BS-U35-WF/g' .config 2>/dev/null || true
 
-        echo "=== Подмена имени в готовой файловой системе (RootFS) ==="
-        # 1. Перехватываем дефолтный профиль NVRAM в Веб-интерфейсе
-        if [ -f rom/etc/services.conf ]; then
-          sed -i 's/WT3020H16M/BS-U35-WF/g' rom/etc/services.conf
-        fi
+        # 5. Подменяем дефолтные текстовые строки Си-кода
+        sed -i 's/{"computer_name",.*/{"computer_name", "BS-U35-WF"},/' user/shared/defaults.c
+        sed -i 's/{"router_model",.*/{"router_model", "BS-U35-WF"},/' user/shared/defaults.c
 
-        # 2. Создаем "обманку" для команды uname -a
-        # Скрипт перехватывает вызов, подменяя WT3020H16M на BS-U35-WF на лету
-        mkdir -p rom/usr/bin
-        cat << 'EOF' > rom/usr/bin/uname
-        #!/bin/sh
-        if [ "$1" = "-a" ] || [ "$1" = "--all" ]; then
-            /bin/uname -a | sed 's/WT3020H16M/BS-U35-WF/g'
-        elif [ "$1" = "-n" ] || [ "$1" = "--nodename" ]; then
-            echo "BS-U35-WF"
-        else
-            /bin/uname "$@"
-        fi
-        EOF
-                chmod +x rom/usr/bin/uname
-
-        # 3. Переопределяем hostname для сетевых утилит
-        mkdir -p rom/etc
-        echo "BS-U35-WF" > rom/etc/hostname
-
-        # echo "=== Финальная упаковка прошивки ==="
+        # echo "=== Сборка ==="
+        # # Запускаем сборку, подставив новое имя целевой платы в аргументы, если скрипт их принимает, 
+        # # либо build_firmware.sh сам подхватит измененный нами .config
         # ./build_firmware.sh
-
+        
         # echo "=== Переименование готового файла прошивки ==="
         # cd images && mv *.trx BS-U35-WF.trx && cd ..
 
